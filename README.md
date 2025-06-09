@@ -2,7 +2,7 @@
 
 **VEO3-Angel** is a desktop application that transforms basic video ideas into detailed, optimized prompts for Google's VEO3 video generation model. Built with Electron, Express, and powered by Anthropic's Claude AI, it provides an intuitive interface for creating professional-grade video prompts.
 
-![VEO3-Angel Interface](assets/screenshot.png)
+![VEO3-Angel Interface](https://github.com/MushroomFleet/VEO3-Angel/blob/main/veo3-angel.png)
 
 ## Features
 
