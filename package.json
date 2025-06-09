@@ -1,0 +1,60 @@
+{
+  "name": "veo3-angel",
+  "version": "1.0.0",
+  "description": "VEO3 Video Generation Assistant - Desktop Application",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run server\" \"npm run electron-dev\"",
+    "server": "node src/server/server.js",
+    "electron-dev": "wait-on http://localhost:3000 && electron .",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.veo3angel.app",
+    "productName": "VEO3-Angel",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "keywords": [
+    "veo3",
+    "video",
+    "generation",
+    "ai",
+    "prompt",
+    "assistant"
+  ],
+  "author": "VEO3-Angel Team",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1",
+    "fs-extra": "^11.1.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  }
+}

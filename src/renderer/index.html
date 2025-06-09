@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VEO3-Angel - Video Generation Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-gray-900">VEO3-Angel</h1>
+                    <span class="ml-3 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        Video Generation Assistant
+                    </span>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- View Toggle -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-600">View:</span>
+                        <button id="viewToggle" class="px-3 py-1 text-sm font-medium bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors">
+                            Detailed
+                        </button>
+                    </div>
+                    
+                    <!-- Status Indicator -->
+                    <div id="statusIndicator" class="flex items-center space-x-2">
+                        <div id="statusDot" class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span id="statusText" class="text-sm text-gray-600">Connecting...</span>
+                    </div>
+                    
+                    <!-- Settings Button -->
+                    <button id="settingsBtn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Input Section -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Your Video Idea</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label for="userPrompt" class="block text-sm font-medium text-gray-700 mb-2">
+                                Describe your video concept:
+                            </label>
+                            <textarea 
+                                id="userPrompt" 
+                                rows="6" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 resize-none"
+                                placeholder="Enter your basic video idea here... (e.g., 'a person walking on a beach')"
+                            ></textarea>
+                            <div class="flex justify-between items-center mt-2">
+                                <span id="charCount" class="text-sm text-gray-500">0 / 5000</span>
+                                <button id="randomExampleBtn" class="text-sm text-primary-600 hover:text-primary-700">
+                                    Try random example
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" id="useExamples" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                            <label for="useExamples" class="text-sm text-gray-700">Use example prompts for inspiration</label>
+                        </div>
+                        
+                        <button 
+                            id="enhanceBtn" 
+                            class="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            disabled
+                        >
+                            <span id="enhanceBtnText">Enhance Prompt</span>
+                            <svg id="enhanceSpinner" class="hidden animate-spin -mr-1 ml-3 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Output Section -->
+            <div class="lg:col-span-2">
+                <!-- Category Breakdown (Detailed View) -->
+                <div id="categoryPanel" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">10-Category Analysis</h2>
+                    
+                    <div id="categoriesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Categories will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Enhanced Prompt -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-900">Enhanced VEO3 Prompt</h2>
+                        <div class="flex space-x-2">
+                            <button id="copyBtn" class="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50">
+                                Copy
+                            </button>
+                            <button id="saveBtn" class="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="enhancedOutput" class="min-h-32 p-4 bg-gray-50 rounded-md border-2 border-dashed border-gray-300 text-gray-500 flex items-center justify-center">
+                        Your enhanced prompt will appear here...
+                    </div>
+                    
+                    <div id="promptMetadata" class="hidden mt-4 text-sm text-gray-600">
+                        <!-- Metadata will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Settings</h3>
+                    <button id="closeSettingsBtn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">API Status</label>
+                        <div id="apiStatus" class="p-3 bg-gray-50 rounded-md">
+                            <div class="flex items-center space-x-2">
+                                <div id="apiStatusDot" class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                <span id="apiStatusText" class="text-sm">Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Session Statistics</label>
+                        <div id="sessionStats" class="p-3 bg-gray-50 rounded-md text-sm">
+                            <div class="space-y-1">
+                                <div>Prompts enhanced: <span id="statsPromptCount">0</span></div>
+                                <div>Session started: <span id="statsSessionStart">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button id="exportSessionBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                            Export Session
+                        </button>
+                        <button id="closeSettingsBtn2" class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2">
+        <!-- Toasts will be dynamically added here -->
+    </div>
+
+    <!-- Scripts -->
+    <script src="scripts/app.js"></script>
+    <script src="scripts/ui-controller.js"></script>
+</body>
+</html>

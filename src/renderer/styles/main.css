@@ -1,0 +1,338 @@
+/* Custom styles for VEO3-Angel */
+
+/* Smooth transitions */
+* {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Text area auto-resize */
+.auto-resize {
+    resize: none;
+    overflow: hidden;
+}
+
+/* Category cards */
+.category-card {
+    @apply p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors;
+}
+
+.category-card h3 {
+    @apply font-semibold text-sm text-gray-900 mb-2;
+}
+
+.category-card p {
+    @apply text-sm text-gray-600 leading-relaxed;
+}
+
+.category-card.empty {
+    @apply bg-gray-25 border-dashed border-gray-200;
+}
+
+.category-card.empty p {
+    @apply text-gray-400 italic;
+}
+
+/* Enhanced output styling */
+#enhancedOutput {
+    font-family: 'Georgia', serif;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+#enhancedOutput.has-content {
+    @apply bg-white border-solid border-gray-300 text-gray-900;
+}
+
+/* Loading states */
+.loading-shimmer {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Status indicators */
+.status-online {
+    @apply bg-green-400;
+}
+
+.status-offline {
+    @apply bg-red-400;
+}
+
+.status-loading {
+    @apply bg-yellow-400;
+    animation: pulse 2s infinite;
+}
+
+/* Toast notifications */
+.toast {
+    @apply px-4 py-3 rounded-md shadow-lg border transform transition-all duration-300 ease-in-out;
+    animation: slideIn 0.3s ease-out;
+}
+
+.toast.success {
+    @apply bg-green-50 border-green-200 text-green-800;
+}
+
+.toast.error {
+    @apply bg-red-50 border-red-200 text-red-800;
+}
+
+.toast.info {
+    @apply bg-blue-50 border-blue-200 text-blue-800;
+}
+
+.toast.warning {
+    @apply bg-yellow-50 border-yellow-200 text-yellow-800;
+}
+
+.toast.removing {
+    animation: slideOut 0.3s ease-in;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+    backdrop-filter: blur(4px);
+}
+
+/* Button loading state */
+.btn-loading {
+    @apply opacity-75 cursor-not-allowed;
+}
+
+/* Character counter */
+.char-count-warning {
+    @apply text-yellow-600;
+}
+
+.char-count-danger {
+    @apply text-red-600 font-semibold;
+}
+
+/* Copy feedback */
+.copy-success {
+    @apply bg-green-600;
+}
+
+/* View toggle animations */
+#categoryPanel.hidden {
+    display: none;
+}
+
+#categoryPanel.visible {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .grid.grid-cols-1.lg\\:grid-cols-3 {
+        gap: 1rem;
+    }
+    
+    .category-card {
+        @apply p-3;
+    }
+    
+    #enhancedOutput {
+        font-size: 14px;
+    }
+}
+
+/* Focus styles */
+.focus\\:ring-primary-500:focus {
+    --tw-ring-color: rgb(59 130 246 / 0.5);
+}
+
+/* Custom button variants */
+.btn-secondary {
+    @apply px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+}
+
+.btn-danger {
+    @apply px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+}
+
+/* Textarea improvements */
+textarea:focus {
+    outline: none;
+}
+
+/* Loading skeleton for categories */
+.category-skeleton {
+    @apply p-4 bg-gray-100 rounded-lg animate-pulse;
+}
+
+.category-skeleton .skeleton-title {
+    @apply h-4 bg-gray-200 rounded w-3/4 mb-2;
+}
+
+.category-skeleton .skeleton-content {
+    @apply h-3 bg-gray-200 rounded w-full mb-1;
+}
+
+/* Metadata styling */
+.metadata-item {
+    @apply inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded mr-2 mb-1;
+}
+
+/* Enhanced prompt styling */
+.prompt-content {
+    @apply text-gray-900 leading-relaxed;
+}
+
+.prompt-content::selection {
+    @apply bg-primary-100 text-primary-900;
+}
+
+/* Settings modal specific styles */
+#settingsModal .modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Stats display */
+.stats-grid {
+    @apply grid grid-cols-2 gap-4;
+}
+
+.stat-item {
+    @apply text-center;
+}
+
+.stat-value {
+    @apply text-2xl font-bold text-gray-900;
+}
+
+.stat-label {
+    @apply text-sm text-gray-500;
+}
+
+/* Error states */
+.error-message {
+    @apply px-4 py-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm;
+}
+
+.warning-message {
+    @apply px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm;
+}
+
+/* Success states */
+.success-message {
+    @apply px-4 py-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm;
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+    /* Dark mode styles would go here if implemented */
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        @apply bg-white;
+    }
+    
+    .bg-gray-50 {
+        @apply bg-white;
+    }
+}
+
+/* Accessibility improvements */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .category-card {
+        @apply border-2 border-gray-600;
+    }
+    
+    button {
+        @apply border-2;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
