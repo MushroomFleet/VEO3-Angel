@@ -3,6 +3,49 @@ const path = require('path');
 const anthropicService = require('./anthropic');
 const winston = require('winston');
 
+// Helper function to get the correct assets path for both dev and production
+function getAssetsPath() {
+    // In development, assets are in the project root
+    // In production (packaged), we need to check multiple possible locations
+    
+    const isDev = process.env.NODE_ENV === 'development';
+    const isElectronApp = !!process.versions.electron;
+    
+    if (isDev) {
+        // Development mode - assets are relative to project root
+        return path.join(__dirname, '../../../assets');
+    }
+    
+    // In packaged electron app, try multiple locations in order of likelihood
+    const fallbackPaths = [
+        // extraResources location (most likely with our config)
+        process.resourcesPath ? path.join(process.resourcesPath, 'assets') : null,
+        
+        // Standard electron locations
+        path.join(process.cwd(), 'assets'),
+        path.join(__dirname, '../../../assets'),
+        
+        // Near executable
+        path.join(path.dirname(process.execPath), 'resources', 'assets'),
+        path.join(path.dirname(process.execPath), 'assets'),
+        
+        // App.asar locations (if app is packaged in asar)
+        isElectronApp && process.resourcesPath ? path.join(process.resourcesPath, 'app.asar', 'assets') : null,
+        
+        // Last resort - current working directory
+        path.join(process.cwd(), 'resources', 'assets')
+    ].filter(Boolean); // Remove null entries
+    
+    for (const fallbackPath of fallbackPaths) {
+        if (fs.existsSync(fallbackPath)) {
+            return fallbackPath;
+        }
+    }
+    
+    // If nothing works, return the development path and let it fail with a clear error
+    return path.join(__dirname, '../../../assets');
+}
+
 // Configure logger
 const logger = winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
@@ -45,9 +88,27 @@ class PromptProcessor {
 
     async loadSystemPrompt() {
         try {
-            const systemPromptPath = path.join(__dirname, '../../../assets/veo3-assistant-system-prompt.md');
+            const assetsPath = getAssetsPath();
+            const systemPromptPath = path.join(assetsPath, 'veo3-assistant-system-prompt.md');
+            
+            logger.info('Attempting to load system prompt', {
+                assetsPath,
+                systemPromptPath,
+                exists: await fs.pathExists(systemPromptPath)
+            });
             
             if (!await fs.pathExists(systemPromptPath)) {
+                // Log additional debugging info
+                logger.error('System prompt file not found. Debugging info:', {
+                    systemPromptPath,
+                    assetsPath,
+                    assetsExists: await fs.pathExists(assetsPath),
+                    cwd: process.cwd(),
+                    execPath: process.execPath,
+                    resourcesPath: process.resourcesPath,
+                    isDev: process.env.NODE_ENV === 'development',
+                    isElectron: !!process.versions.electron
+                });
                 throw new Error(`System prompt file not found at: ${systemPromptPath}`);
             }
 
@@ -65,7 +126,14 @@ class PromptProcessor {
 
     async loadExamples() {
         try {
-            const examplesPath = path.join(__dirname, '../../../assets/prompt-examples.md');
+            const assetsPath = getAssetsPath();
+            const examplesPath = path.join(assetsPath, 'prompt-examples.md');
+            
+            logger.info('Attempting to load examples', {
+                assetsPath,
+                examplesPath,
+                exists: await fs.pathExists(examplesPath)
+            });
             
             if (await fs.pathExists(examplesPath)) {
                 const examplesContent = await fs.readFile(examplesPath, 'utf8');
@@ -75,7 +143,10 @@ class PromptProcessor {
                     path: examplesPath
                 });
             } else {
-                logger.warn('Examples file not found, continuing without examples');
+                logger.warn('Examples file not found, continuing without examples', {
+                    searchedPath: examplesPath,
+                    assetsPath
+                });
                 this.examples = [];
             }
             

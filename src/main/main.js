@@ -1,6 +1,5 @@
 const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
 
 class VEO3AngelApp {
     constructor() {
@@ -95,40 +94,38 @@ class VEO3AngelApp {
         console.log('🖥️ Main window created');
     }
 
-    startServer() {
+    async startServer() {
         try {
-            // Start the Express server
+            console.log('🚀 Starting server...');
+            
+            // Import and run the server directly within this process
             const serverPath = path.join(__dirname, '../server/server.js');
             
-            this.serverProcess = spawn('node', [serverPath], {
-                cwd: path.join(__dirname, '../..'),
-                stdio: 'pipe'
-            });
-
-            this.serverProcess.stdout.on('data', (data) => {
-                console.log(`Server: ${data}`);
-                
-                // Wait for server ready signal
-                if (data.toString().includes('VEO3-Angel server running')) {
+            // Set up server ready detection
+            const originalConsoleLog = console.log;
+            let serverReady = false;
+            
+            console.log = (...args) => {
+                originalConsoleLog(...args);
+                const message = args.join(' ');
+                if (message.includes('VEO3-Angel server running') && !serverReady) {
+                    serverReady = true;
                     setTimeout(() => {
                         this.loadApp();
                     }, 1000);
                 }
-            });
-
-            this.serverProcess.stderr.on('data', (data) => {
-                console.error(`Server Error: ${data}`);
-            });
-
-            this.serverProcess.on('close', (code) => {
-                console.log(`Server process exited with code ${code}`);
-                
-                if (!this.isQuitting && code !== 0) {
-                    this.showServerError();
-                }
-            });
-
-            console.log('🚀 Starting server...');
+            };
+            
+            // Require and start the server module
+            delete require.cache[require.resolve(serverPath)]; // Clear cache in case of restart
+            require(serverPath);
+            
+            console.log('✅ Server started successfully');
+            
+            // Restore original console.log after a delay
+            setTimeout(() => {
+                console.log = originalConsoleLog;
+            }, 5000);
 
         } catch (error) {
             console.error('Failed to start server:', error);
@@ -387,16 +384,9 @@ Created with ❤️ for the video generation community.`,
     cleanup() {
         console.log('🧹 Cleaning up...');
         
-        if (this.serverProcess) {
-            this.serverProcess.kill('SIGTERM');
-            
-            // Force kill after 5 seconds
-            setTimeout(() => {
-                if (this.serverProcess && !this.serverProcess.killed) {
-                    this.serverProcess.kill('SIGKILL');
-                }
-            }, 5000);
-        }
+        // Since the server runs in the same process, we don't need to kill a separate process
+        // The server will shut down when the main process exits
+        // We could add graceful shutdown logic here if needed
     }
 }
 
