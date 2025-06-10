@@ -25,7 +25,9 @@ class AnthropicService {
             const apiKey = process.env.ANTHROPIC_API_KEY;
             
             if (!apiKey) {
-                throw new Error('ANTHROPIC_API_KEY is required in environment variables');
+                logger.warn('ANTHROPIC_API_KEY not found - service will be in configuration required state');
+                this.isInitialized = false;
+                return { configured: false, message: 'API key configuration required' };
             }
 
             this.client = new Anthropic({
@@ -36,10 +38,12 @@ class AnthropicService {
             await this.testConnection();
             this.isInitialized = true;
             logger.info('Anthropic service initialized successfully');
+            return { configured: true, message: 'Service initialized successfully' };
 
         } catch (error) {
             logger.error('Failed to initialize Anthropic service:', error);
-            throw error;
+            this.isInitialized = false;
+            return { configured: false, message: `Initialization failed: ${error.message}` };
         }
     }
 
@@ -181,6 +185,34 @@ Return only valid JSON in this format:
         } catch (error) {
             logger.error('Error analyzing prompt categories:', error);
             throw new Error(`Failed to analyze categories: ${error.message}`);
+        }
+    }
+
+    async reconfigure(apiKey) {
+        try {
+            if (!apiKey || typeof apiKey !== 'string') {
+                throw new Error('Valid API key is required');
+            }
+
+            // Update environment variable
+            process.env.ANTHROPIC_API_KEY = apiKey;
+
+            // Create new client
+            this.client = new Anthropic({
+                apiKey: apiKey
+            });
+
+            // Test the connection
+            await this.testConnection();
+            this.isInitialized = true;
+            logger.info('Anthropic service reconfigured successfully');
+            
+            return { success: true, message: 'Service configured successfully' };
+
+        } catch (error) {
+            logger.error('Failed to reconfigure Anthropic service:', error);
+            this.isInitialized = false;
+            return { success: false, message: `Configuration failed: ${error.message}` };
         }
     }
 

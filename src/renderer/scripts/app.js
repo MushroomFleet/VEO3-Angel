@@ -16,6 +16,9 @@ class VEO3Angel {
         // Bind event listeners
         this.bindEvents();
         
+        // Check configuration status first
+        await this.checkConfiguration();
+        
         // Check API status
         await this.checkStatus();
         
@@ -44,6 +47,22 @@ class VEO3Angel {
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.hideSettings());
         document.getElementById('closeSettingsBtn2').addEventListener('click', () => this.hideSettings());
         document.getElementById('exportSessionBtn').addEventListener('click', () => this.exportSession());
+        
+        // Provider configuration
+        document.getElementById('preferredProvider').addEventListener('change', (e) => this.setPreferredProvider(e.target.value));
+        document.getElementById('testAnthropicBtn').addEventListener('click', () => this.testProvider('anthropic'));
+        document.getElementById('testOpenrouterBtn').addEventListener('click', () => this.testProvider('openrouter'));
+        document.getElementById('testAllProvidersBtn').addEventListener('click', () => this.testAllProviders());
+        document.getElementById('enableFallback').addEventListener('change', (e) => this.toggleFallback(e.target.checked));
+        
+        // Configuration modal
+        document.getElementById('configForm').addEventListener('submit', (e) => this.handleConfigSubmit(e));
+        document.getElementById('configCancelBtn').addEventListener('click', () => this.hideConfigModal());
+        document.getElementById('getApiKeyLink').addEventListener('click', (e) => this.openAnthropicConsole(e));
+        
+        // Restart modal
+        document.getElementById('restartNowBtn').addEventListener('click', () => this.restartApp());
+        document.getElementById('restartLaterBtn').addEventListener('click', () => this.hideRestartModal());
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
@@ -472,6 +491,161 @@ class VEO3Angel {
         }
     }
 
+    async checkConfiguration() {
+        try {
+            const response = await fetch(`${this.apiBase}/configuration-status`);
+            const data = await response.json();
+            
+            if (data.success && !data.data.configured) {
+                console.log('⚠️ API key not configured, showing configuration modal');
+                this.showConfigModal();
+            } else {
+                console.log('✅ API key configured');
+            }
+        } catch (error) {
+            console.error('❌ Configuration check failed:', error);
+            // Don't show modal if we can't check - might be a different error
+        }
+    }
+
+    showConfigModal() {
+        const modal = document.getElementById('configModal');
+        modal.classList.remove('hidden');
+        
+        // Focus on the input field
+        setTimeout(() => {
+            const input = document.getElementById('apiKeyInput');
+            if (input) input.focus();
+        }, 100);
+    }
+
+    hideConfigModal() {
+        const modal = document.getElementById('configModal');
+        modal.classList.add('hidden');
+        
+        // Clear the form
+        document.getElementById('configForm').reset();
+        this.hideConfigMessage();
+    }
+
+    async handleConfigSubmit(e) {
+        e.preventDefault();
+        
+        const apiKey = document.getElementById('apiKeyInput').value.trim();
+        if (!apiKey) {
+            this.showConfigMessage('Please enter your API key', 'error');
+            return;
+        }
+        
+        this.setConfigSubmitState(true);
+        
+        try {
+            const response = await fetch(`${this.apiBase}/configure-api-key`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ apiKey })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showConfigMessage('API key configured successfully!', 'success');
+                
+                // Hide config modal and show restart modal after a delay
+                setTimeout(() => {
+                    this.hideConfigModal();
+                    this.showRestartModal();
+                }, 1500);
+            } else {
+                this.showConfigMessage(data.message || 'Configuration failed', 'error');
+            }
+            
+        } catch (error) {
+            console.error('❌ Configuration failed:', error);
+            this.showConfigMessage(`Configuration failed: ${error.message}`, 'error');
+        } finally {
+            this.setConfigSubmitState(false);
+        }
+    }
+
+    setConfigSubmitState(loading) {
+        const submitBtn = document.getElementById('configSubmitBtn');
+        const submitText = document.getElementById('configSubmitText');
+        const spinner = document.getElementById('configSpinner');
+        const input = document.getElementById('apiKeyInput');
+        
+        if (loading) {
+            submitBtn.disabled = true;
+            submitText.textContent = 'Testing...';
+            spinner.classList.remove('hidden');
+            input.disabled = true;
+        } else {
+            submitBtn.disabled = false;
+            submitText.textContent = 'Save & Test';
+            spinner.classList.add('hidden');
+            input.disabled = false;
+        }
+    }
+
+    showConfigMessage(message, type) {
+        const messageDiv = document.getElementById('configMessage');
+        const messageText = document.getElementById('configMessageText');
+        
+        messageDiv.className = `mt-4 p-3 rounded-md ${
+            type === 'success' ? 'bg-green-50 border border-green-200' : 
+            type === 'error' ? 'bg-red-50 border border-red-200' : 
+            'bg-blue-50 border border-blue-200'
+        }`;
+        
+        messageText.className = `text-sm ${
+            type === 'success' ? 'text-green-800' : 
+            type === 'error' ? 'text-red-800' : 
+            'text-blue-800'
+        }`;
+        
+        messageText.textContent = message;
+        messageDiv.classList.remove('hidden');
+    }
+
+    hideConfigMessage() {
+        const messageDiv = document.getElementById('configMessage');
+        messageDiv.classList.add('hidden');
+    }
+
+    openAnthropicConsole(e) {
+        e.preventDefault();
+        
+        // Use Electron's shell.openExternal if available, otherwise fallback to window.open
+        if (window.electronAPI && window.electronAPI.openExternal) {
+            window.electronAPI.openExternal('https://console.anthropic.com/');
+        } else {
+            window.open('https://console.anthropic.com/', '_blank');
+        }
+    }
+
+    showRestartModal() {
+        const modal = document.getElementById('restartModal');
+        modal.classList.remove('hidden');
+    }
+
+    hideRestartModal() {
+        const modal = document.getElementById('restartModal');
+        modal.classList.add('hidden');
+    }
+
+    restartApp() {
+        // Use Electron's app.relaunch if available
+        if (window.electronAPI && window.electronAPI.relaunch) {
+            window.electronAPI.relaunch();
+        } else {
+            // Fallback for non-Electron environments
+            this.showToast('Please manually restart the application', 'info', 6000);
+            this.hideRestartModal();
+        }
+    }
+
     showToast(message, type = 'info', duration = 4000) {
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
@@ -501,6 +675,180 @@ class VEO3Angel {
                 }, 300);
             }
         }, duration);
+    }
+
+    // Provider Management Methods
+    async setPreferredProvider(provider) {
+        try {
+            const response = await fetch(`${this.apiBase}/set-preferred-provider`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ provider })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.showToast(`Preferred provider set to ${provider}`, 'success');
+                await this.updateProviderStatus();
+            } else {
+                throw new Error(data.message || 'Failed to set preferred provider');
+            }
+        } catch (error) {
+            console.error('❌ Failed to set preferred provider:', error);
+            this.showToast(`Failed to set preferred provider: ${error.message}`, 'error');
+        }
+    }
+
+    async testProvider(provider) {
+        const button = document.getElementById(`test${provider.charAt(0).toUpperCase() + provider.slice(1)}Btn`);
+        const apiKeyInput = document.getElementById(`${provider}ApiKey`);
+        
+        if (!apiKeyInput.value.trim()) {
+            this.showToast(`Please enter ${provider} API key first`, 'warning');
+            return;
+        }
+
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Testing...';
+
+        try {
+            // Configure the provider first
+            const configResponse = await fetch(`${this.apiBase}/configure-provider`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    provider: provider,
+                    apiKey: apiKeyInput.value.trim(),
+                    model: provider === 'openrouter' ? document.getElementById('openrouterModel').value : undefined
+                })
+            });
+
+            const configData = await configResponse.json();
+            if (configData.success) {
+                this.showToast(`${provider} configured successfully!`, 'success');
+                await this.updateProviderStatus();
+            } else {
+                throw new Error(configData.message || 'Configuration failed');
+            }
+        } catch (error) {
+            console.error(`❌ ${provider} test failed:`, error);
+            this.showToast(`${provider} test failed: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    async testAllProviders() {
+        const button = document.getElementById('testAllProvidersBtn');
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Testing...';
+
+        try {
+            const response = await fetch(`${this.apiBase}/test-providers`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                const results = data.data;
+                let message = 'Provider Test Results:\n';
+                
+                for (const [provider, result] of Object.entries(results)) {
+                    message += `${provider}: ${result.success ? '✅ Working' : '❌ Failed'}\n`;
+                }
+                
+                this.showToast('Provider tests completed', 'info', 6000);
+                console.log('Provider test results:', results);
+                await this.updateProviderStatus();
+            } else {
+                throw new Error(data.message || 'Test failed');
+            }
+        } catch (error) {
+            console.error('❌ Provider tests failed:', error);
+            this.showToast(`Provider tests failed: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    async toggleFallback(enabled) {
+        try {
+            const response = await fetch(`${this.apiBase}/enable-fallback`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ enabled })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.showToast(`Fallback mode ${enabled ? 'enabled' : 'disabled'}`, 'info');
+            } else {
+                throw new Error(data.message || 'Failed to toggle fallback');
+            }
+        } catch (error) {
+            console.error('❌ Failed to toggle fallback:', error);
+            this.showToast(`Failed to toggle fallback: ${error.message}`, 'error');
+        }
+    }
+
+    async updateProviderStatus() {
+        try {
+            const response = await fetch(`${this.apiBase}/providers`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const status = data.data;
+                
+                // Update provider status indicators
+                this.updateProviderStatusUI('anthropic', status.providers.anthropic);
+                this.updateProviderStatusUI('openrouter', status.providers.openrouter);
+                
+                // Update preferred provider selector
+                const preferredSelector = document.getElementById('preferredProvider');
+                if (preferredSelector && status.preferredProvider) {
+                    preferredSelector.value = status.preferredProvider;
+                }
+                
+                // Update session stats
+                document.getElementById('statsCurrentProvider').textContent = 
+                    status.preferredProvider || 'None';
+                
+                console.log('Updated provider status:', status);
+            }
+        } catch (error) {
+            console.error('❌ Failed to update provider status:', error);
+        }
+    }
+
+    updateProviderStatusUI(provider, providerStatus) {
+        const statusDot = document.getElementById(`${provider}StatusDot`);
+        const statusText = document.getElementById(`${provider}StatusText`);
+        
+        if (!statusDot || !statusText) return;
+        
+        if (providerStatus.apiKeyConfigured && providerStatus.initialized) {
+            statusDot.className = 'w-2 h-2 bg-green-500 rounded-full';
+            statusText.textContent = 'Configured';
+            statusText.className = 'text-xs text-green-600';
+        } else if (providerStatus.apiKeyConfigured) {
+            statusDot.className = 'w-2 h-2 bg-yellow-500 rounded-full';
+            statusText.textContent = 'Key set, not tested';
+            statusText.className = 'text-xs text-yellow-600';
+        } else {
+            statusDot.className = 'w-2 h-2 bg-gray-400 rounded-full';
+            statusText.textContent = 'Not configured';
+            statusText.className = 'text-xs text-gray-600';
+        }
     }
 }
 

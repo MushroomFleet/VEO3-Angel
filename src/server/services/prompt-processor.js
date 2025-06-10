@@ -1,6 +1,6 @@
 const fs = require('fs-extra');
 const path = require('path');
-const anthropicService = require('./anthropic');
+const providerManager = require('./provider-manager');
 const winston = require('winston');
 
 // Helper function to get the correct assets path for both dev and production
@@ -74,11 +74,14 @@ class PromptProcessor {
             // Load examples
             await this.loadExamples();
             
-            // Initialize Anthropic service
-            await anthropicService.initialize();
+            // Initialize provider manager (handles both Anthropic and OpenRouter)
+            const providerResult = await providerManager.initialize();
             
             this.isInitialized = true;
             logger.info('Prompt processor initialized successfully');
+            
+            // Return the configuration status
+            return providerResult;
             
         } catch (error) {
             logger.error('Failed to initialize prompt processor:', error);
@@ -196,12 +199,22 @@ class PromptProcessor {
         }
 
         try {
-            const { useExamples = false, includeCategories = true } = options;
+            const { 
+                useExamples = false, 
+                includeCategories = true,
+                provider = null,
+                model = null,
+                streaming = false,
+                onChunk = null
+            } = options;
             
             logger.info('Processing prompt enhancement', {
                 userPromptLength: userPrompt.length,
                 useExamples,
-                includeCategories
+                includeCategories,
+                provider,
+                model,
+                streaming
             });
 
             let enhancedSystemPrompt = this.systemPrompt;
@@ -222,28 +235,47 @@ class PromptProcessor {
 
             // Get category breakdown if requested
             if (includeCategories) {
-                const categoryAnalysis = await anthropicService.analyzePromptCategories(
+                const categoryAnalysis = await providerManager.analyzePromptCategories(
                     userPrompt, 
-                    enhancedSystemPrompt
+                    enhancedSystemPrompt,
+                    { provider, model }
                 );
                 result.categories = categoryAnalysis.categories;
+                result.categoryProvider = categoryAnalysis.provider;
+                result.categoryFallback = categoryAnalysis.fallbackUsed;
             }
 
             // Get enhanced prompt
-            const enhancement = await anthropicService.enhancePrompt(
+            const enhancement = await providerManager.enhancePrompt(
                 userPrompt,
                 enhancedSystemPrompt,
-                useExamples
+                {
+                    useExamples,
+                    includeCategories: false, // We handle categories separately
+                    provider,
+                    model,
+                    streaming,
+                    onChunk
+                }
             );
             
             result.enhancedPrompt = enhancement.enhancedPrompt;
             result.usage = enhancement.usage;
             result.model = enhancement.model;
+            result.provider = enhancement.provider;
+            result.fallbackUsed = enhancement.fallbackUsed;
+            
+            if (enhancement.fallbackUsed) {
+                result.originalProvider = enhancement.originalProvider;
+                result.fallbackReason = enhancement.fallbackReason;
+            }
 
             logger.info('Prompt enhancement completed successfully', {
                 inputLength: userPrompt.length,
                 outputLength: result.enhancedPrompt.length,
-                categoriesIncluded: !!result.categories
+                categoriesIncluded: !!result.categories,
+                provider: result.provider,
+                fallbackUsed: result.fallbackUsed
             });
 
             return result;
@@ -299,7 +331,7 @@ class PromptProcessor {
             systemPromptLoaded: !!this.systemPrompt,
             examplesLoaded: !!this.examples,
             exampleCount: this.examples ? this.examples.length : 0,
-            anthropicStatus: anthropicService.getStatus()
+            providerManager: providerManager.getStatus()
         };
     }
 }

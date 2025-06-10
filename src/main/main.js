@@ -341,7 +341,7 @@ class VEO3AngelApp {
             type: 'info',
             title: 'About VEO3-Angel',
             message: 'VEO3-Angel',
-            detail: `Version: 1.0.0
+            detail: `Version: 1.6.0
 Platform: ${process.platform}
 Electron: ${process.versions.electron}
 Node.js: ${process.versions.node}
@@ -355,7 +355,7 @@ Created with ❤️ for the video generation community.`,
 
     showSystemInfo() {
         const info = {
-            'Application Version': '1.0.0',
+            'Application Version': '1.6.0',
             'Electron Version': process.versions.electron,
             'Node.js Version': process.versions.node,
             'Chrome Version': process.versions.chrome,

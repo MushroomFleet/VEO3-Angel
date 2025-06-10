@@ -39,19 +39,29 @@ app.use((err, req, res, next) => {
 // Initialize services
 async function initializeServer() {
     try {
-        // Initialize prompt processor with system prompt
-        await promptProcessor.initialize();
-        console.log('✅ Prompt processor initialized');
-        
-        // Initialize file manager
+        // Initialize file manager first (this should always work)
         await fileManager.initialize();
         console.log('✅ File manager initialized');
         
-        // Start server
+        // Initialize prompt processor (this may fail gracefully if API key is missing)
+        const promptResult = await promptProcessor.initialize();
+        if (promptResult && !promptResult.configured) {
+            console.log('⚠️ Prompt processor partially initialized - API key configuration required');
+        } else {
+            console.log('✅ Prompt processor initialized');
+        }
+        
+        // Start server regardless of API configuration status
         app.listen(PORT, () => {
             console.log(`🚀 VEO3-Angel server running on http://localhost:${PORT}`);
-            console.log('📝 System prompt loaded and ready');
-            console.log('🎬 Ready to enhance VEO3 prompts!');
+            
+            if (promptResult && !promptResult.configured) {
+                console.log('⚠️ API key configuration required - some features will be unavailable');
+                console.log('🔧 Please configure your Anthropic API key to enable prompt enhancement');
+            } else {
+                console.log('📝 System prompt loaded and ready');
+                console.log('🎬 Ready to enhance VEO3 prompts!');
+            }
         });
         
     } catch (error) {

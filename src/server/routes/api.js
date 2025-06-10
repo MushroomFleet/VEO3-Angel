@@ -1,7 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs-extra');
+const path = require('path');
 const promptProcessor = require('../services/prompt-processor');
 const fileManager = require('../services/file-manager');
+const anthropicService = require('../services/anthropic');
+const openrouterService = require('../services/openrouter');
+const providerManager = require('../services/provider-manager');
 
 // Middleware for error handling
 const asyncHandler = (fn) => (req, res, next) => {
@@ -10,7 +15,14 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 // POST /api/enhance-prompt
 router.post('/enhance-prompt', asyncHandler(async (req, res) => {
-    const { userPrompt, useExamples = false, includeCategories = true } = req.body;
+    const { 
+        userPrompt, 
+        useExamples = false, 
+        includeCategories = true,
+        provider = null,
+        model = null,
+        streaming = false
+    } = req.body;
 
     if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.trim().length === 0) {
         return res.status(400).json({
@@ -26,9 +38,76 @@ router.post('/enhance-prompt', asyncHandler(async (req, res) => {
         });
     }
 
+    // Handle streaming response
+    if (streaming) {
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Cache-Control'
+        });
+
+        let enhancedPrompt = '';
+        
+        try {
+            const result = await promptProcessor.enhancePrompt(userPrompt.trim(), {
+                useExamples,
+                includeCategories,
+                provider,
+                model,
+                streaming: true,
+                onChunk: (chunk) => {
+                    enhancedPrompt += chunk;
+                    res.write(`data: ${JSON.stringify({ 
+                        type: 'chunk', 
+                        content: chunk,
+                        timestamp: new Date().toISOString()
+                    })}\n\n`);
+                }
+            });
+
+            // Send final result
+            res.write(`data: ${JSON.stringify({ 
+                type: 'complete', 
+                result: {
+                    ...result,
+                    enhancedPrompt
+                }
+            })}\n\n`);
+
+            // Log the request
+            await fileManager.logPromptRequest(
+                result.userPrompt,
+                enhancedPrompt,
+                {
+                    useExamples,
+                    includeCategories,
+                    provider: result.provider,
+                    model: result.model,
+                    usage: result.usage,
+                    streaming: true
+                }
+            );
+
+        } catch (error) {
+            res.write(`data: ${JSON.stringify({ 
+                type: 'error', 
+                error: error.message 
+            })}\n\n`);
+        }
+
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+    }
+
+    // Handle non-streaming response
     const result = await promptProcessor.enhancePrompt(userPrompt.trim(), {
         useExamples,
-        includeCategories
+        includeCategories,
+        provider,
+        model
     });
 
     // Log the request
@@ -38,6 +117,7 @@ router.post('/enhance-prompt', asyncHandler(async (req, res) => {
         {
             useExamples,
             includeCategories,
+            provider: result.provider,
             model: result.model,
             usage: result.usage
         }
@@ -178,6 +258,252 @@ router.post('/generate-filename', asyncHandler(async (req, res) => {
         data: { filename }
     });
 }));
+
+// GET /api/configuration-status
+router.get('/configuration-status', asyncHandler(async (req, res) => {
+    const providerStatus = providerManager.getStatus();
+    
+    res.json({
+        success: true,
+        data: {
+            configured: providerStatus.configuredProviders.length > 0,
+            providerManager: providerStatus,
+            legacy: {
+                // Keep legacy fields for backward compatibility
+                apiKeyConfigured: providerStatus.providers.anthropic?.apiKeyConfigured || false,
+                serviceInitialized: providerStatus.providers.anthropic?.initialized || false
+            }
+        }
+    });
+}));
+
+// POST /api/configure-api-key (Legacy endpoint for backward compatibility)
+router.post('/configure-api-key', asyncHandler(async (req, res) => {
+    const { apiKey } = req.body;
+
+    if (!apiKey || typeof apiKey !== 'string') {
+        return res.status(400).json({
+            error: 'Invalid input',
+            message: 'apiKey is required and must be a non-empty string'
+        });
+    }
+
+    // Basic validation for Anthropic API key format
+    if (!apiKey.startsWith('sk-ant-')) {
+        return res.status(400).json({
+            error: 'Invalid API key format',
+            message: 'Anthropic API keys should start with "sk-ant-"'
+        });
+    }
+
+    try {
+        // Use provider manager to configure Anthropic
+        const configResult = await providerManager.configureProvider('anthropic', apiKey);
+        
+        if (!configResult.success) {
+            return res.status(400).json({
+                error: 'API key validation failed',
+                message: configResult.message
+            });
+        }
+
+        // If validation successful, save to .env file
+        await saveApiKeyToEnv('ANTHROPIC_API_KEY', apiKey);
+
+        res.json({
+            success: true,
+            data: {
+                message: 'API key configured successfully',
+                configured: true,
+                provider: 'anthropic'
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            error: 'Configuration failed',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/configure-provider
+router.post('/configure-provider', asyncHandler(async (req, res) => {
+    const { provider, apiKey, model } = req.body;
+
+    if (!provider || typeof provider !== 'string') {
+        return res.status(400).json({
+            error: 'Invalid input',
+            message: 'provider is required and must be a string'
+        });
+    }
+
+    if (!apiKey || typeof apiKey !== 'string') {
+        return res.status(400).json({
+            error: 'Invalid input',
+            message: 'apiKey is required and must be a non-empty string'
+        });
+    }
+
+    // Validate API key format based on provider
+    if (provider === 'anthropic' && !apiKey.startsWith('sk-ant-')) {
+        return res.status(400).json({
+            error: 'Invalid API key format',
+            message: 'Anthropic API keys should start with "sk-ant-"'
+        });
+    }
+
+    if (provider === 'openrouter' && !apiKey.startsWith('sk-or-')) {
+        return res.status(400).json({
+            error: 'Invalid API key format',
+            message: 'OpenRouter API keys should start with "sk-or-"'
+        });
+    }
+
+    try {
+        // Configure the provider
+        const configResult = await providerManager.configureProvider(provider, apiKey, { model });
+        
+        if (!configResult.success) {
+            return res.status(400).json({
+                error: 'API key validation failed',
+                message: configResult.message
+            });
+        }
+
+        // Save to .env file
+        const envKey = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENROUTER_API_KEY';
+        await saveApiKeyToEnv(envKey, apiKey);
+
+        res.json({
+            success: true,
+            data: {
+                message: `${provider} configured successfully`,
+                configured: true,
+                provider: provider
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            error: 'Configuration failed',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/set-preferred-provider
+router.post('/set-preferred-provider', asyncHandler(async (req, res) => {
+    const { provider } = req.body;
+
+    if (!provider || typeof provider !== 'string') {
+        return res.status(400).json({
+            error: 'Invalid input',
+            message: 'provider is required and must be a string'
+        });
+    }
+
+    try {
+        providerManager.setPreferredProvider(provider);
+        
+        res.json({
+            success: true,
+            data: {
+                message: `Preferred provider set to ${provider}`,
+                preferredProvider: provider
+            }
+        });
+
+    } catch (error) {
+        res.status(400).json({
+            error: 'Failed to set preferred provider',
+            message: error.message
+        });
+    }
+}));
+
+// GET /api/providers
+router.get('/providers', asyncHandler(async (req, res) => {
+    const status = providerManager.getStatus();
+    
+    res.json({
+        success: true,
+        data: status
+    });
+}));
+
+// GET /api/models
+router.get('/models', asyncHandler(async (req, res) => {
+    const { provider } = req.query;
+    const models = providerManager.getAvailableModels(provider);
+    
+    res.json({
+        success: true,
+        data: models
+    });
+}));
+
+// POST /api/test-providers
+router.post('/test-providers', asyncHandler(async (req, res) => {
+    const results = await providerManager.testProviders();
+    
+    res.json({
+        success: true,
+        data: results
+    });
+}));
+
+// POST /api/enable-fallback
+router.post('/enable-fallback', asyncHandler(async (req, res) => {
+    const { enabled = true } = req.body;
+    
+    providerManager.enableFallbackMode(enabled);
+    
+    res.json({
+        success: true,
+        data: {
+            message: `Fallback mode ${enabled ? 'enabled' : 'disabled'}`,
+            fallbackEnabled: enabled
+        }
+    });
+}));
+
+// Helper function to save API key to .env file
+async function saveApiKeyToEnv(keyName, apiKey) {
+    const envPath = path.join(process.cwd(), '.env');
+    let envContent = '';
+
+    // Read existing .env file if it exists
+    if (await fs.pathExists(envPath)) {
+        envContent = await fs.readFile(envPath, 'utf8');
+    }
+
+    // Check if the key already exists
+    const lines = envContent.split('\n');
+    let found = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith(`${keyName}=`)) {
+            lines[i] = `${keyName}=${apiKey}`;
+            found = true;
+            break;
+        }
+    }
+
+    // If not found, add it
+    if (!found) {
+        if (envContent && !envContent.endsWith('\n')) {
+            envContent += '\n';
+        }
+        envContent += `${keyName}=${apiKey}\n`;
+    } else {
+        envContent = lines.join('\n');
+    }
+
+    // Write back to file
+    await fs.writeFile(envPath, envContent, 'utf8');
+    console.log(`✅ ${keyName} saved to .env file`);
+}
 
 // Error handling middleware
 router.use((error, req, res, next) => {

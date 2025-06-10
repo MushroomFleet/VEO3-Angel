@@ -150,7 +150,7 @@
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Settings</h3>
@@ -161,35 +161,238 @@
                     </button>
                 </div>
                 
-                <div class="space-y-4">
+                <div class="space-y-6">
+                    <!-- Provider Configuration -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">API Status</label>
-                        <div id="apiStatus" class="p-3 bg-gray-50 rounded-md">
-                            <div class="flex items-center space-x-2">
-                                <div id="apiStatusDot" class="w-2 h-2 bg-gray-400 rounded-full"></div>
-                                <span id="apiStatusText" class="text-sm">Checking...</span>
+                        <h4 class="text-md font-medium text-gray-900 mb-3">AI Provider Configuration</h4>
+                        
+                        <!-- Provider Selection -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Preferred Provider</label>
+                            <select id="preferredProvider" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="openrouter">OpenRouter (Multiple Models)</option>
+                            </select>
+                        </div>
+
+                        <!-- Anthropic Configuration -->
+                        <div class="border rounded-lg p-4 mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h5 class="text-sm font-medium text-gray-900">Anthropic Claude</h5>
+                                <div id="anthropicStatus" class="flex items-center space-x-2">
+                                    <div id="anthropicStatusDot" class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span id="anthropicStatusText" class="text-xs text-gray-600">Not configured</span>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">API Key</label>
+                                    <div class="flex space-x-2">
+                                        <input type="password" id="anthropicApiKey" placeholder="sk-ant-..." 
+                                               class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                                        <button id="testAnthropicBtn" class="px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
+                                            Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OpenRouter Configuration -->
+                        <div class="border rounded-lg p-4 mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h5 class="text-sm font-medium text-gray-900">OpenRouter</h5>
+                                <div id="openrouterStatus" class="flex items-center space-x-2">
+                                    <div id="openrouterStatusDot" class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span id="openrouterStatusText" class="text-xs text-gray-600">Not configured</span>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">API Key</label>
+                                    <div class="flex space-x-2">
+                                        <input type="password" id="openrouterApiKey" placeholder="sk-or-..." 
+                                               class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                                        <button id="testOpenrouterBtn" class="px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
+                                            Test
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">Default Model</label>
+                                    <select id="openrouterModel" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                                        <option value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                                        <option value="openai/gpt-4o">GPT-4 Omni</option>
+                                        <option value="openai/gpt-4o-mini">GPT-4 Omni Mini</option>
+                                        <option value="meta-llama/llama-3.1-70b-instruct">Llama 3.1 70B</option>
+                                        <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Options -->
+                        <div class="border rounded-lg p-4">
+                            <h5 class="text-sm font-medium text-gray-900 mb-3">Advanced Options</h5>
+                            <div class="space-y-3">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="enableFallback" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" checked>
+                                    <label for="enableFallback" class="ml-2 text-sm text-gray-700">Enable automatic fallback between providers</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="enableStreaming" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                    <label for="enableStreaming" class="ml-2 text-sm text-gray-700">Enable real-time streaming (shows text as it's generated)</label>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
+                    <!-- Session Statistics -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Session Statistics</label>
+                        <h4 class="text-md font-medium text-gray-900 mb-3">Session Statistics</h4>
                         <div id="sessionStats" class="p-3 bg-gray-50 rounded-md text-sm">
-                            <div class="space-y-1">
-                                <div>Prompts enhanced: <span id="statsPromptCount">0</span></div>
-                                <div>Session started: <span id="statsSessionStart">-</span></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div class="text-gray-600">Prompts enhanced</div>
+                                    <div class="font-medium" id="statsPromptCount">0</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Session started</div>
+                                    <div class="font-medium" id="statsSessionStart">-</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Current provider</div>
+                                    <div class="font-medium" id="statsCurrentProvider">-</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600">Fallbacks used</div>
+                                    <div class="font-medium" id="statsFallbackCount">0</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="flex justify-end space-x-3">
-                        <button id="exportSessionBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                            Export Session
-                        </button>
+                    <!-- Action Buttons -->
+                    <div class="flex justify-between items-center pt-4 border-t">
+                        <div class="space-x-3">
+                            <button id="exportSessionBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                Export Session
+                            </button>
+                            <button id="testAllProvidersBtn" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                                Test All Providers
+                            </button>
+                        </div>
                         <button id="closeSettingsBtn2" class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700">
                             Close
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Configuration Modal -->
+    <div id="configModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-center mb-4">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                </div>
+                
+                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">API Key Configuration Required</h3>
+                <p class="text-sm text-gray-600 text-center mb-6">
+                    VEO3-Angel needs your Anthropic API key to enhance prompts. Your key is stored locally and securely.
+                </p>
+                
+                <form id="configForm" class="space-y-4">
+                    <div>
+                        <label for="apiKeyInput" class="block text-sm font-medium text-gray-700 mb-2">
+                            Anthropic API Key
+                        </label>
+                        <input 
+                            type="password" 
+                            id="apiKeyInput" 
+                            placeholder="sk-ant-..." 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                            required
+                        >
+                        <p class="text-xs text-gray-500 mt-1">
+                            Your API key should start with "sk-ant-"
+                        </p>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <a 
+                            href="#" 
+                            id="getApiKeyLink"
+                            class="text-sm text-primary-600 hover:text-primary-700"
+                        >
+                            Get API Key →
+                        </a>
+                        <div class="space-x-3">
+                            <button 
+                                type="button" 
+                                id="configCancelBtn"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit" 
+                                id="configSubmitBtn"
+                                class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+                            >
+                                <span id="configSubmitText">Save & Test</span>
+                                <svg id="configSpinner" class="hidden animate-spin -mr-1 ml-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <div id="configMessage" class="hidden mt-4 p-3 rounded-md">
+                    <p id="configMessageText" class="text-sm"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restart Prompt Modal -->
+    <div id="restartModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-center mb-4">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                        <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                </div>
+                
+                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">Configuration Successful!</h3>
+                <p class="text-sm text-gray-600 text-center mb-6">
+                    Your API key has been saved. Please restart the application to apply the changes.
+                </p>
+                
+                <div class="flex justify-center space-x-3">
+                    <button 
+                        id="restartLaterBtn"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    >
+                        Restart Later
+                    </button>
+                    <button 
+                        id="restartNowBtn"
+                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                    >
+                        Restart Now
+                    </button>
                 </div>
             </div>
         </div>

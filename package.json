@@ -1,6 +1,6 @@
 {
   "name": "veo3-angel",
-  "version": "1.0.0",
+  "version": "1.6.0",
   "description": "VEO3 Video Generation Assistant - Desktop Application",
   "main": "src/main/main.js",
   "scripts": {
@@ -22,21 +22,35 @@
       "src/**/*",
       "assets/**/*",
       "package.json",
-      "node_modules/**/*"
+      "!node_modules/{.cache,@types,typescript,eslint*,prettier*,jest*,mocha*,chai*,nyc*,coverage*,*.md}"
     ],
+    "compression": "maximum",
     "extraResources": [
       {
         "from": "assets",
         "to": "assets",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      },
+      "publisherName": "VEO3-Angel Team",
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VEO3-Angel"
     }
   },
   "keywords": [
@@ -51,17 +65,18 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",
-    "express": "^4.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "multer": "^1.4.5-lts.1",
+    "express": "^4.18.2",
     "fs-extra": "^11.1.1",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^4.20.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4",
-    "concurrently": "^8.2.2",
     "wait-on": "^7.2.0"
   }
 }
