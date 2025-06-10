@@ -1,8 +1,6 @@
 # VEO3-Angel 🎬✨
 
-**VEO3-Angel** is a desktop application that transforms basic video ideas into detailed, optimized prompts for Google's VEO3 video generation model. Built with Electron, Express, and powered by multiple AI providers (Anthropic Claude & OpenRouter), it provides an intuitive interface for creating professional-grade video prompts with access to 300+ AI models.
-
-## [Check Releases for the Windows Installer](https://github.com/MushroomFleet/VEO3-Angel/releases)
+**VEO3-Angel** is a desktop application that transforms basic video ideas into detailed, optimized prompts for Google's VEO3 video generation model. Built with Electron, Express, and powered by three AI providers (Anthropic Claude, OpenRouter, and Ollama), it provides an intuitive interface for creating professional-grade video prompts with access to 300+ cloud models or local AI for complete privacy.
 
 ![VEO3-Angel Interface](https://github.com/MushroomFleet/VEO3-Angel/blob/main/veo3-angel.png)
 
@@ -10,7 +8,8 @@
 
 ### 🎯 Core Functionality
 - **Smart Prompt Enhancement**: Transform simple ideas into detailed VEO3 prompts
-- **Multi-Provider Support**: Choose between Anthropic Claude or 300+ OpenRouter models
+- **Three AI Provider Options**: Choose between Anthropic Claude, 300+ OpenRouter models, or local Ollama models
+- **Local AI Support**: Run completely offline with Ollama for maximum privacy
 - **10-Category Analysis**: Break down prompts into VEO3's optimal structure
 - **Enhanced Example Library**: Modular collections of proven VEO3 prompts
 - **Real-time Processing**: Instant enhancement with your preferred AI model
@@ -31,9 +30,10 @@
 
 ### Prerequisites
 - **Node.js** (v16 or higher)
-- **AI Provider API Key** (choose one):
+- **AI Provider** (choose one or more):
   - **Anthropic API Key** ([Get one here](https://console.anthropic.com/)) - Access to Claude models
   - **OpenRouter API Key** ([Get one here](https://openrouter.ai/)) - Access to 300+ models including Claude, GPT, Gemini, and more
+  - **Ollama** ([Install here](https://ollama.ai/)) - Local AI models (no API key required, runs on your machine)
 
 ### Installation
 
@@ -46,7 +46,22 @@
    ```bash
    npm install
    ```
-4. **Configure your API key** (choose one or both):
+4. **Configure your AI provider** (choose one or more):
+
+   **Option A: Ollama (Local AI - Recommended for privacy)**
+   ```bash
+   # Install Ollama from https://ollama.ai/
+   # Then pull a model (examples):
+   ollama pull llama3.2:3b        # Fast, smaller model
+   ollama pull llama3.1:8b        # Balanced performance
+   ollama pull qwen2.5:14b        # High quality prompts
+   
+   # Start Ollama service
+   ollama serve
+   ```
+   No API key required! Configure in the app settings with host: `http://127.0.0.1:11434`
+
+   **Option B: Cloud AI Providers**
    ```bash
    cp .env.example .env
    ```
@@ -62,7 +77,7 @@
    OPENROUTER_API_KEY=sk-or-your_actual_api_key_here
    ```
    
-   **For both providers:**
+   **For both cloud providers:**
    ```
    ANTHROPIC_API_KEY=sk-ant-your_anthropic_key_here
    OPENROUTER_API_KEY=sk-or-your_openrouter_key_here
@@ -148,11 +163,39 @@ A close-up cinematic shot of an adorable orange tabby cat with bright green eyes
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Your Anthropic Claude API key | ✅ One provider required |
-| `OPENROUTER_API_KEY` | Your OpenRouter API key | ✅ One provider required |
+| `ANTHROPIC_API_KEY` | Your Anthropic Claude API key | ✅ One provider required* |
+| `OPENROUTER_API_KEY` | Your OpenRouter API key | ✅ One provider required* |
+| `OLLAMA_HOST` | Ollama server URL (default: http://127.0.0.1:11434) | No |
 | `NODE_ENV` | Environment (development/production) | No |
 | `SERVER_PORT` | Server port (default: 3000) | No |
 | `LOG_LEVEL` | Logging level (info/debug/error) | No |
+
+*Note: You only need one provider configured. Ollama requires no API key - just install and run locally.
+
+### Ollama Setup
+
+For local AI with complete privacy:
+
+1. **Install Ollama**: Download from [ollama.ai](https://ollama.ai/)
+2. **Pull models** (choose based on your hardware):
+   ```bash
+   # Lightweight models (4GB+ RAM)
+   ollama pull llama3.2:3b
+   ollama pull qwen2.5:3b
+   
+   # Balanced models (8GB+ RAM)
+   ollama pull llama3.1:8b
+   ollama pull qwen2.5:7b
+   
+   # High-quality models (16GB+ RAM)
+   ollama pull qwen2.5:14b
+   ollama pull llama3.1:70b
+   ```
+3. **Start Ollama service**:
+   ```bash
+   ollama serve
+   ```
+4. **Configure in VEO3-Angel**: Use settings to set Ollama host to `http://127.0.0.1:11434`
 
 ### Application Settings
 
@@ -237,6 +280,19 @@ veo3-angel/
 - Categories only appear after enhancement
 - Try refreshing the application
 
+**❌ "Ollama connection failed"**
+- Ensure Ollama is installed and running: `ollama serve`
+- Check host URL is set to `http://127.0.0.1:11434` (not localhost)
+- Verify you have models installed: `ollama list`
+- Try pulling a basic model: `ollama pull llama3.2:3b`
+- Restart Ollama service if needed
+
+**❌ "No Ollama models available"**
+- Pull models manually: `ollama pull llama3.2:3b`
+- Check available models: `ollama list`
+- Ensure Ollama service is running: `ollama serve`
+- Use "Refresh Models" button in settings
+
 ### Getting Help
 
 1. **Check the logs** in the console or `logs/` directory
@@ -244,9 +300,17 @@ veo3-angel/
 3. **Verify your API key** is correct and has credits
 4. **Try a simple test prompt** like "a dog running"
 
-## API Costs
+## AI Provider Options
 
-VEO3-Angel supports multiple AI providers with different pricing:
+VEO3-Angel supports three AI providers with different approaches:
+
+### Ollama (Local AI) - FREE 🎉
+- **Cost**: **FREE** - No API costs, runs locally
+- **Privacy**: Complete privacy, data never leaves your machine
+- **Models**: Llama 3.1/3.2, Qwen 2.5, Mistral, and many more
+- **Requirements**: Local installation, 4GB+ RAM recommended
+- **Benefits**: No internet required, unlimited usage, full privacy
+- **Best for**: Privacy-conscious users, unlimited usage, offline work
 
 ### Anthropic Claude
 - **Average cost**: $0.01-0.05 per prompt enhancement
@@ -261,23 +325,26 @@ VEO3-Angel supports multiple AI providers with different pricing:
 - **Monitor usage**: [OpenRouter Dashboard](https://openrouter.ai/activity)
 
 **Cost-saving tips:**
+- **Use Ollama for free unlimited local AI**
 - Start with OpenRouter for model variety and competitive pricing
 - Use Anthropic direct for guaranteed Claude access
-- Configure both providers for automatic fallback
+- Configure multiple providers for automatic fallback
 
-## What's New in v1.9.0
+## What's New in v2.0.0 🎉
 
 ### 🚀 Major Features
-- **Multi-Provider Support**: Added OpenRouter integration alongside Anthropic Claude
-- **300+ AI Models**: Access to GPT, Claude, Gemini, Llama, Mistral, and more via OpenRouter
-- **Enhanced First-Time Setup**: Improved configuration popup with proper API key validation
-- **Fixed Examples System**: Resolved path issues preventing examples from loading in installed versions
+- **Ollama Integration**: Added local AI support as the third provider option
+- **Complete Privacy Option**: Run 100% offline with local AI models
+- **Dynamic Model Selection**: Main UI dropdown adapts to selected provider
+- **Free Unlimited Usage**: No API costs with Ollama local models
+- **Three Provider Ecosystem**: Choose between cloud AI (Anthropic, OpenRouter) or local AI (Ollama)
 
 ### 🔧 Technical Improvements
-- **Smart API Key Validation**: Proper validation for both Anthropic (`sk-ant-`) and OpenRouter (`sk-or-`) keys
-- **Modular Examples**: Enhanced example library with organized collections
-- **Better Error Handling**: Improved user feedback for configuration issues
-- **Path Resolution**: Fixed examples directory detection for both development and production
+- **IPv4 Connection Fix**: Resolved Ollama connectivity issues using 127.0.0.1
+- **Provider-Aware Processing**: Enhanced prompt system recognizes active provider
+- **Smart Model Management**: Automatic model detection and loading for each provider
+- **Improved Error Handling**: Better feedback for connection and configuration issues
+- **Enhanced Initialization**: Startup system detects and configures appropriate models
 
 ### 🎯 User Experience
 - **Provider Selection**: Choose your preferred AI provider during setup
