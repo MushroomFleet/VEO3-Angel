@@ -6,6 +6,7 @@ const promptProcessor = require('../services/prompt-processor');
 const fileManager = require('../services/file-manager');
 const anthropicService = require('../services/anthropic');
 const openrouterService = require('../services/openrouter');
+const ollamaService = require('../services/ollama');
 const providerManager = require('../services/provider-manager');
 
 // Middleware for error handling
@@ -434,7 +435,7 @@ router.post('/configure-api-key', asyncHandler(async (req, res) => {
 
 // POST /api/configure-provider
 router.post('/configure-provider', asyncHandler(async (req, res) => {
-    const { provider, apiKey, model } = req.body;
+    const { provider, apiKey, model, host } = req.body;
 
     if (!provider || typeof provider !== 'string') {
         return res.status(400).json({
@@ -443,6 +444,46 @@ router.post('/configure-provider', asyncHandler(async (req, res) => {
         });
     }
 
+    // Handle Ollama differently - it doesn't need an API key
+    if (provider === 'ollama') {
+        try {
+            // For Ollama, use host parameter or default
+            const ollamaHost = host || 'http://localhost:11434';
+            const configResult = await providerManager.configureProvider(provider, ollamaHost, { model });
+            
+            if (!configResult.success) {
+                return res.status(400).json({
+                    error: 'Ollama connection failed',
+                    message: configResult.message
+                });
+            }
+
+            // Save host to .env file if provided
+            if (host && host !== 'http://localhost:11434') {
+                await saveApiKeyToEnv('OLLAMA_HOST', host);
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    message: `Ollama configured successfully at ${ollamaHost}`,
+                    configured: true,
+                    provider: provider,
+                    host: ollamaHost,
+                    modelsCount: configResult.modelsCount || 0
+                }
+            });
+
+        } catch (error) {
+            res.status(500).json({
+                error: 'Configuration failed',
+                message: error.message
+            });
+        }
+        return;
+    }
+
+    // For other providers, require API key
     if (!apiKey || typeof apiKey !== 'string') {
         return res.status(400).json({
             error: 'Invalid input',
@@ -764,6 +805,232 @@ router.post('/enable-fallback', asyncHandler(async (req, res) => {
             fallbackEnabled: enabled
         }
     });
+}));
+
+// GET /api/ollama/models - Get Ollama models
+router.get('/ollama/models', asyncHandler(async (req, res) => {
+    const { force = false } = req.query;
+    
+    try {
+        const result = await ollamaService.fetchAvailableModels(force === 'true');
+        
+        res.json({
+            success: result.success,
+            data: {
+                models: result.models,
+                metadata: {
+                    cached: result.cached,
+                    totalModels: result.totalModels,
+                    host: ollamaService.host,
+                    timestamp: new Date().toISOString()
+                }
+            },
+            message: result.message
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch Ollama models',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/ollama/models/refresh - Force refresh Ollama models cache
+router.post('/ollama/models/refresh', asyncHandler(async (req, res) => {
+    try {
+        // Clear cache first
+        ollamaService.clearModelsCache();
+        
+        // Fetch fresh models
+        const result = await ollamaService.fetchAvailableModels(true);
+        
+        res.json({
+            success: result.success,
+            data: {
+                models: result.models,
+                metadata: {
+                    totalModels: result.totalModels,
+                    host: ollamaService.host,
+                    refreshedAt: new Date().toISOString()
+                }
+            },
+            message: result.success ? 
+                `Successfully refreshed ${result.totalModels || 0} models` : 
+                result.message
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to refresh Ollama models',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/ollama/pull - Pull a model from Ollama registry
+router.post('/ollama/pull', asyncHandler(async (req, res) => {
+    const { model } = req.body;
+    
+    if (!model || typeof model !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid input',
+            message: 'model is required and must be a string'
+        });
+    }
+    
+    try {
+        const result = await ollamaService.pullModel(model);
+        
+        res.json({
+            success: result.success,
+            data: {
+                message: result.message,
+                model: model,
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to pull model',
+            message: error.message
+        });
+    }
+}));
+
+// DELETE /api/ollama/models/:modelName - Delete a model from Ollama
+router.delete('/ollama/models/:modelName(*)', asyncHandler(async (req, res) => {
+    const { modelName } = req.params;
+    
+    if (!modelName) {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid input',
+            message: 'modelName is required'
+        });
+    }
+    
+    try {
+        const result = await ollamaService.deleteModel(modelName);
+        
+        res.json({
+            success: result.success,
+            data: {
+                message: result.message,
+                model: modelName,
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete model',
+            message: error.message
+        });
+    }
+}));
+
+// GET /api/ollama/recommended - Get recommended models for download
+router.get('/ollama/recommended', asyncHandler(async (req, res) => {
+    try {
+        const recommended = ollamaService.getRecommendedModels();
+        
+        res.json({
+            success: true,
+            data: {
+                models: recommended,
+                host: ollamaService.host,
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get recommended models',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/ollama/set-default-model - Set the default Ollama model
+router.post('/ollama/set-default-model', asyncHandler(async (req, res) => {
+    const { model } = req.body;
+    
+    if (!model || typeof model !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid input',
+            message: 'model is required and must be a string'
+        });
+    }
+    
+    try {
+        const success = ollamaService.setDefaultModel(model);
+        
+        if (success) {
+            res.json({
+                success: true,
+                data: {
+                    message: `Default model set to '${model}'`,
+                    defaultModel: model
+                }
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: 'Failed to set default model',
+                message: 'Model not available. Please ensure the model is pulled first.'
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to set default model',
+            message: error.message
+        });
+    }
+}));
+
+// GET /api/ollama/status - Get Ollama service status
+router.get('/ollama/status', asyncHandler(async (req, res) => {
+    try {
+        const status = ollamaService.getStatus();
+        
+        res.json({
+            success: true,
+            data: status
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get Ollama status',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/ollama/test-connection - Test Ollama connection
+router.post('/ollama/test-connection', asyncHandler(async (req, res) => {
+    try {
+        await ollamaService.testConnection();
+        
+        res.json({
+            success: true,
+            data: {
+                message: 'Ollama connection successful',
+                host: ollamaService.host,
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Ollama connection failed',
+            message: error.message
+        });
+    }
 }));
 
 // Helper function to get available example files

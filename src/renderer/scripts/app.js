@@ -26,6 +26,9 @@ class VEO3Angel {
         this.updateCharacterCount();
         this.updateViewMode();
         
+        // Initialize main model dropdown based on current provider
+        await this.initializeMainModelDropdown();
+        
         console.log('✅ VEO3-Angel initialized');
     }
 
@@ -52,12 +55,18 @@ class VEO3Angel {
         document.getElementById('preferredProvider').addEventListener('change', (e) => this.setPreferredProvider(e.target.value));
         document.getElementById('testAnthropicBtn').addEventListener('click', () => this.testProvider('anthropic'));
         document.getElementById('testOpenrouterBtn').addEventListener('click', () => this.testProvider('openrouter'));
+        document.getElementById('testOllamaBtn').addEventListener('click', () => this.testOllama());
         document.getElementById('testAllProvidersBtn').addEventListener('click', () => this.testAllProviders());
         document.getElementById('enableFallback').addEventListener('change', (e) => this.toggleFallback(e.target.checked));
         
         // OpenRouter model management
         document.getElementById('refreshModelsBtn')?.addEventListener('click', () => this.refreshOpenRouterModels());
         document.getElementById('openrouterModel').addEventListener('change', (e) => this.setOpenRouterDefaultModel(e.target.value));
+        
+        // Ollama model management
+        document.getElementById('refreshOllamaModelsBtn')?.addEventListener('click', () => this.refreshOllamaModels());
+        document.getElementById('manageOllamaModelsBtn')?.addEventListener('click', () => this.showOllamaModelManager());
+        document.getElementById('ollamaModel')?.addEventListener('change', (e) => this.setOllamaDefaultModel(e.target.value));
         
         // Main UI model selector
         document.getElementById('modelSelect')?.addEventListener('change', (e) => this.onMainModelChange(e.target.value));
@@ -206,15 +215,16 @@ class VEO3Angel {
             const selectedExampleFile = useExamples ? document.getElementById('examplesSelect').value : null;
             const includeCategories = this.currentView === 'detailed';
             
-            // Get selected model from main UI or settings
+            // Get current provider and selected model from main UI dropdown
+            const currentProvider = await this.getCurrentProvider();
             const mainModelSelect = document.getElementById('modelSelect');
-            const settingsModelSelect = document.getElementById('openrouterModel');
-            const selectedModel = mainModelSelect?.value || settingsModelSelect?.value || null;
+            const selectedModel = mainModelSelect?.value || null;
             
             const requestBody = {
                 userPrompt,
                 useExamples,
-                includeCategories
+                includeCategories,
+                provider: currentProvider
             };
             
             // Add selected example file if examples are enabled and a file is selected
@@ -808,6 +818,9 @@ class VEO3Angel {
             if (data.success) {
                 this.showToast(`Preferred provider set to ${provider}`, 'success');
                 await this.updateProviderStatus();
+                
+                // Update main model dropdown for the new provider
+                await this.updateMainModelDropdown(provider);
             } else {
                 throw new Error(data.message || 'Failed to set preferred provider');
             }
@@ -815,6 +828,117 @@ class VEO3Angel {
             console.error('❌ Failed to set preferred provider:', error);
             this.showToast(`Failed to set preferred provider: ${error.message}`, 'error');
         }
+    }
+
+    async getCurrentProvider() {
+        try {
+            const response = await fetch(`${this.apiBase}/providers`);
+            const data = await response.json();
+            
+            if (data.success) {
+                return data.data.preferredProvider || 'anthropic';
+            }
+        } catch (error) {
+            console.error('❌ Failed to get current provider:', error);
+        }
+        return 'anthropic'; // fallback
+    }
+
+    async updateMainModelDropdown(provider) {
+        const modelSelect = document.getElementById('modelSelect');
+        if (!modelSelect) return;
+
+        // Clear and show loading
+        modelSelect.innerHTML = '<option value="">Loading models...</option>';
+
+        try {
+            switch(provider) {
+                case 'anthropic':
+                    this.populateAnthropicModels();
+                    break;
+                case 'openrouter':
+                    await this.loadOpenRouterModels();
+                    break;
+                case 'ollama':
+                    await this.loadOllamaModelsForMainDropdown();
+                    break;
+                default:
+                    modelSelect.innerHTML = '<option value="">No models available</option>';
+            }
+        } catch (error) {
+            console.error(`❌ Failed to load models for ${provider}:`, error);
+            modelSelect.innerHTML = '<option value="">Error loading models</option>';
+        }
+    }
+
+    populateAnthropicModels() {
+        const modelSelect = document.getElementById('modelSelect');
+        if (!modelSelect) return;
+
+        modelSelect.innerHTML = '';
+        
+        const option = document.createElement('option');
+        option.value = 'claude-3-5-sonnet-20241022';
+        option.textContent = 'Sonnet 4';
+        option.selected = true;
+        modelSelect.appendChild(option);
+    }
+
+    async loadOllamaModelsForMainDropdown() {
+        try {
+            const response = await fetch(`${this.apiBase}/ollama/models`);
+            const data = await response.json();
+            
+            if (data.success && data.data.models) {
+                this.populateMainDropdownWithOllamaModels(data.data.models);
+            } else {
+                const modelSelect = document.getElementById('modelSelect');
+                modelSelect.innerHTML = '<option value="">No Ollama models available</option>';
+            }
+        } catch (error) {
+            console.error('❌ Error loading Ollama models for main dropdown:', error);
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.innerHTML = '<option value="">Error loading Ollama models</option>';
+        }
+    }
+
+    populateMainDropdownWithOllamaModels(models) {
+        const modelSelect = document.getElementById('modelSelect');
+        if (!modelSelect) return;
+
+        modelSelect.innerHTML = '';
+
+        if (!models || models.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No Ollama models available';
+            modelSelect.appendChild(option);
+            return;
+        }
+
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Use provider default';
+        modelSelect.appendChild(defaultOption);
+
+        // Add each model
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            
+            // Format display name with size if available
+            let displayName = model.name || model.id;
+            if (model.size) {
+                const sizeGB = (model.size / (1024 * 1024 * 1024)).toFixed(1);
+                displayName += ` (${sizeGB}GB)`;
+            }
+            
+            option.textContent = displayName;
+            option.title = model.digest || '';
+            
+            modelSelect.appendChild(option);
+        });
     }
 
     async testProvider(provider) {
@@ -928,6 +1052,7 @@ class VEO3Angel {
                 // Update provider status indicators
                 this.updateProviderStatusUI('anthropic', status.providers.anthropic);
                 this.updateProviderStatusUI('openrouter', status.providers.openrouter);
+                this.updateProviderStatusUI('ollama', status.providers.ollama);
                 
                 // Update preferred provider selector
                 const preferredSelector = document.getElementById('preferredProvider');
@@ -1378,6 +1503,270 @@ class VEO3Angel {
         } catch (error) {
             console.error('❌ Failed to load example:', error);
             this.showToast('Failed to load example', 'error');
+        }
+    }
+
+    // Ollama Management Methods
+    async testOllama() {
+        const button = document.getElementById('testOllamaBtn');
+        const hostInput = document.getElementById('ollamaHost');
+        
+        if (!hostInput.value.trim()) {
+            this.showToast('Please enter Ollama host URL', 'warning');
+            return;
+        }
+
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Testing...';
+
+        try {
+            // Configure Ollama
+            const configResponse = await fetch(`${this.apiBase}/configure-provider`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    provider: 'ollama',
+                    host: hostInput.value.trim()
+                })
+            });
+
+            const configData = await configResponse.json();
+            if (configData.success) {
+                this.showToast(`Ollama connected successfully at ${hostInput.value.trim()}!`, 'success');
+                await this.updateProviderStatus();
+                await this.loadOllamaModels();
+            } else {
+                throw new Error(configData.message || 'Ollama connection failed');
+            }
+        } catch (error) {
+            console.error('❌ Ollama test failed:', error);
+            this.showToast(`Ollama test failed: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    async loadOllamaModels() {
+        try {
+            const response = await fetch(`${this.apiBase}/ollama/models`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.populateOllamaModelDropdown(data.data.models);
+                this.showOllamaModelStatus(data.data.metadata);
+                console.log('📋 Loaded Ollama models:', data.data.metadata);
+            } else {
+                console.warn('⚠️ Failed to load Ollama models:', data.message);
+                this.showToast('Failed to load models from Ollama', 'warning');
+            }
+        } catch (error) {
+            console.error('❌ Error loading Ollama models:', error);
+            this.showToast('Error loading Ollama models', 'error');
+        }
+    }
+
+    async refreshOllamaModels() {
+        const button = document.getElementById('refreshOllamaModelsBtn');
+        if (!button) return;
+        
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Refreshing...';
+        
+        try {
+            this.showToast('Refreshing models from Ollama...', 'info');
+            
+            const response = await fetch(`${this.apiBase}/ollama/models/refresh`, {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.populateOllamaModelDropdown(data.data.models);
+                this.showOllamaModelStatus(data.data.metadata);
+                this.showToast(`Refreshed ${data.data.metadata.totalModels || 0} Ollama models`, 'success');
+                console.log('🔄 Ollama models refreshed:', data.data.metadata);
+            } else {
+                throw new Error(data.message || 'Failed to refresh Ollama models');
+            }
+        } catch (error) {
+            console.error('❌ Ollama model refresh failed:', error);
+            this.showToast(`Failed to refresh Ollama models: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    populateOllamaModelDropdown(models) {
+        const select = document.getElementById('ollamaModel');
+        if (!select) return;
+        
+        // Save current selection
+        const currentValue = select.value;
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        if (!models || models.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No models available';
+            option.disabled = true;
+            select.appendChild(option);
+            return;
+        }
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a model...';
+        select.appendChild(defaultOption);
+        
+        // Add each model
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            
+            // Format display name with size if available
+            let displayName = model.name || model.id;
+            if (model.size) {
+                const sizeGB = (model.size / (1024 * 1024 * 1024)).toFixed(1);
+                displayName += ` (${sizeGB}GB)`;
+            }
+            
+            option.textContent = displayName;
+            option.title = model.digest || '';
+            
+            select.appendChild(option);
+        });
+        
+        // Restore selection if it still exists
+        if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+            select.value = currentValue;
+        } else if (models.length > 0) {
+            // Default to first available model if no selection
+            select.value = models[0].id;
+        }
+    }
+
+    showOllamaModelStatus(metadata) {
+        const statusDiv = document.getElementById('ollamaModelCount');
+        if (!statusDiv) return;
+        
+        const statusParts = [];
+        if (metadata.totalModels !== undefined) {
+            statusParts.push(`${metadata.totalModels} models available`);
+        }
+        if (metadata.host) {
+            statusParts.push(`at ${metadata.host}`);
+        }
+        if (metadata.timestamp) {
+            const time = new Date(metadata.timestamp).toLocaleTimeString();
+            statusParts.push(`updated ${time}`);
+        }
+        
+        statusDiv.textContent = statusParts.join(' • ') || 'No models available';
+    }
+
+    async setOllamaDefaultModel(modelId) {
+        if (!modelId) return;
+        
+        try {
+            const response = await fetch(`${this.apiBase}/ollama/set-default-model`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: modelId })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast(`Default Ollama model set to ${modelId}`, 'success');
+                console.log('✅ Ollama default model updated:', modelId);
+            } else {
+                throw new Error(data.message || 'Failed to set default Ollama model');
+            }
+        } catch (error) {
+            console.error('❌ Failed to set default Ollama model:', error);
+            this.showToast(`Failed to set default Ollama model: ${error.message}`, 'error');
+        }
+    }
+
+    async showOllamaModelManager() {
+        try {
+            // Show a simple modal with model management options
+            const confirmed = confirm(
+                'Ollama Model Manager\n\n' +
+                'This will open the model management interface. You can:\n' +
+                '• View recommended models to download\n' +
+                '• Pull new models from Ollama registry\n' +
+                '• Delete existing models\n\n' +
+                'Continue?'
+            );
+            
+            if (confirmed) {
+                // For now, show recommended models
+                const response = await fetch(`${this.apiBase}/ollama/recommended`);
+                const data = await response.json();
+                
+                if (data.success && data.data.models) {
+                    const models = data.data.models;
+                    let message = 'Recommended Ollama Models:\n\n';
+                    
+                    models.forEach((model, index) => {
+                        message += `${index + 1}. ${model.name}\n`;
+                        message += `   ID: ${model.id}\n`;
+                        message += `   Size: ${model.size}\n`;
+                        message += `   ${model.description}\n\n`;
+                    });
+                    
+                    message += 'To install a model, use the Ollama CLI:\n';
+                    message += 'ollama pull <model-id>';
+                    
+                    alert(message);
+                    
+                    this.showToast('See console for model installation commands', 'info', 6000);
+                } else {
+                    throw new Error('Failed to load recommended models');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Failed to show Ollama model manager:', error);
+            this.showToast(`Failed to load model manager: ${error.message}`, 'error');
+        }
+    }
+
+    async getOllamaStatus() {
+        try {
+            const response = await fetch(`${this.apiBase}/ollama/status`);
+            const data = await response.json();
+            
+            if (data.success) {
+                return data.data;
+            }
+        } catch (error) {
+            console.error('❌ Failed to get Ollama status:', error);
+        }
+        return null;
+    }
+
+    async initializeMainModelDropdown() {
+        try {
+            const currentProvider = await this.getCurrentProvider();
+            await this.updateMainModelDropdown(currentProvider);
+            console.log(`🎯 Initialized main model dropdown for provider: ${currentProvider}`);
+        } catch (error) {
+            console.error('❌ Failed to initialize main model dropdown:', error);
+            // Fallback to anthropic
+            this.populateAnthropicModels();
         }
     }
 }

@@ -1,5 +1,6 @@
 const anthropicService = require('./anthropic');
 const openrouterService = require('./openrouter');
+const ollamaService = require('./ollama');
 const winston = require('winston');
 
 // Configure logger
@@ -19,7 +20,8 @@ class ProviderManager {
     constructor() {
         this.providers = {
             anthropic: anthropicService,
-            openrouter: openrouterService
+            openrouter: openrouterService,
+            ollama: ollamaService
         };
         this.preferredProvider = 'anthropic'; // Default to Anthropic for backward compatibility
         this.enableFallback = true;
@@ -247,7 +249,15 @@ class ProviderManager {
             }
 
             const service = this.providers[providerName];
-            const result = await service.reconfigure(apiKey, options.model);
+            let result;
+
+            // Handle Ollama differently (uses host instead of API key)
+            if (providerName === 'ollama') {
+                // For Ollama, apiKey parameter is actually the host URL
+                result = await service.reconfigure(apiKey || null);
+            } else {
+                result = await service.reconfigure(apiKey, options.model);
+            }
 
             if (result.success) {
                 logger.info(`Provider ${providerName} configured successfully`);

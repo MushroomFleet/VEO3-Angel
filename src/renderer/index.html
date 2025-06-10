@@ -201,6 +201,7 @@
                             <select id="preferredProvider" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
                                 <option value="anthropic">Anthropic (Claude)</option>
                                 <option value="openrouter">OpenRouter (Multiple Models)</option>
+                                <option value="ollama">Ollama (Local Models)</option>
                             </select>
                         </div>
 
@@ -261,6 +262,51 @@
                                         <option value="meta-llama/llama-3.1-70b-instruct">Llama 3.1 70B</option>
                                         <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
                                     </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ollama Configuration -->
+                        <div class="border rounded-lg p-4 mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h5 class="text-sm font-medium text-gray-900">Ollama (Local Models)</h5>
+                                <div id="ollamaStatus" class="flex items-center space-x-2">
+                                    <div id="ollamaStatusDot" class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span id="ollamaStatusText" class="text-xs text-gray-600">Not configured</span>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">Host URL</label>
+                                    <div class="flex space-x-2">
+                                        <input type="text" id="ollamaHost" placeholder="http://127.0.0.1:11434" value="http://127.0.0.1:11434"
+                                               class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                                        <button id="testOllamaBtn" class="px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
+                                            Test
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Make sure Ollama is running on your system
+                                    </p>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs text-gray-600">Available Models</label>
+                                        <div class="flex space-x-1">
+                                            <button id="refreshOllamaModelsBtn" class="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 focus:outline-none disabled:opacity-50">
+                                                🔄 Refresh
+                                            </button>
+                                            <button id="manageOllamaModelsBtn" class="px-2 py-1 text-xs font-medium text-green-600 hover:text-green-700 focus:outline-none disabled:opacity-50">
+                                                📦 Manage
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <select id="ollamaModel" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                                        <option value="">Loading models...</option>
+                                    </select>
+                                    <div id="ollamaModelCount" class="text-xs text-gray-500 mt-1">
+                                        No models available
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -337,7 +383,7 @@
                     </div>
                 </div>
                 
-                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">Welcome to VEO3-Angel v1.9.0!</h3>
+                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">Welcome to VEO3-Angel v2.0.0!</h3>
                 <p class="text-sm text-gray-600 text-center mb-6">
                     Choose your AI provider and configure your API key to get started with video prompt enhancement.
                 </p>
@@ -355,6 +401,7 @@
                             <option value="">Select a provider...</option>
                             <option value="anthropic">Anthropic (Claude) - Best for detailed prompts</option>
                             <option value="openrouter">OpenRouter - Access to 300+ models</option>
+                            <option value="ollama">Ollama - Local AI models on your computer</option>
                         </select>
                     </div>
                     
