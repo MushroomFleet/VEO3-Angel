@@ -1,6 +1,6 @@
 # VEO3-Angel 🎬✨
 
-**VEO3-Angel** is a desktop application that transforms basic video ideas into detailed, optimized prompts for Google's VEO3 video generation model. Built with Electron, Express, and powered by Anthropic's Claude AI, it provides an intuitive interface for creating professional-grade video prompts.
+**VEO3-Angel** is a desktop application that transforms basic video ideas into detailed, optimized prompts for Google's VEO3 video generation model. Built with Electron, Express, and powered by multiple AI providers (Anthropic Claude & OpenRouter), it provides an intuitive interface for creating professional-grade video prompts with access to 300+ AI models.
 
 ![VEO3-Angel Interface](https://github.com/MushroomFleet/VEO3-Angel/blob/main/veo3-angel.png)
 
@@ -8,9 +8,10 @@
 
 ### 🎯 Core Functionality
 - **Smart Prompt Enhancement**: Transform simple ideas into detailed VEO3 prompts
+- **Multi-Provider Support**: Choose between Anthropic Claude or 300+ OpenRouter models
 - **10-Category Analysis**: Break down prompts into VEO3's optimal structure
-- **Example Library**: Built-in collection of proven VEO3 prompts
-- **Real-time Processing**: Instant enhancement with Claude AI integration
+- **Enhanced Example Library**: Modular collections of proven VEO3 prompts
+- **Real-time Processing**: Instant enhancement with your preferred AI model
 
 ### 🎨 User Interface
 - **Two View Modes**: Detailed (category breakdown) or Basic (input → output)
@@ -28,7 +29,9 @@
 
 ### Prerequisites
 - **Node.js** (v16 or higher)
-- **Anthropic API Key** ([Get one here](https://console.anthropic.com/))
+- **AI Provider API Key** (choose one):
+  - **Anthropic API Key** ([Get one here](https://console.anthropic.com/)) - Access to Claude models
+  - **OpenRouter API Key** ([Get one here](https://openrouter.ai/)) - Access to 300+ models including Claude, GPT, Gemini, and more
 
 ### Installation
 
@@ -41,13 +44,26 @@
    ```bash
    npm install
    ```
-4. **Configure your API key**:
+4. **Configure your API key** (choose one or both):
    ```bash
    cp .env.example .env
    ```
-   Edit `.env` and add your Anthropic API key:
+   Edit `.env` and add your preferred provider's API key:
+   
+   **For Anthropic Claude:**
    ```
-   ANTHROPIC_API_KEY=your_actual_api_key_here
+   ANTHROPIC_API_KEY=sk-ant-your_actual_api_key_here
+   ```
+   
+   **For OpenRouter (300+ models):**
+   ```
+   OPENROUTER_API_KEY=sk-or-your_actual_api_key_here
+   ```
+   
+   **For both providers:**
+   ```
+   ANTHROPIC_API_KEY=sk-ant-your_anthropic_key_here
+   OPENROUTER_API_KEY=sk-or-your_openrouter_key_here
    ```
 
 ### Running the Application
@@ -130,7 +146,8 @@ A close-up cinematic shot of an adorable orange tabby cat with bright green eyes
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Your Anthropic Claude API key | ✅ Yes |
+| `ANTHROPIC_API_KEY` | Your Anthropic Claude API key | ✅ One provider required |
+| `OPENROUTER_API_KEY` | Your OpenRouter API key | ✅ One provider required |
 | `NODE_ENV` | Environment (development/production) | No |
 | `SERVER_PORT` | Server port (default: 3000) | No |
 | `LOG_LEVEL` | Logging level (info/debug/error) | No |
@@ -185,9 +202,22 @@ veo3-angel/
 ### Common Issues
 
 **❌ "API connection failed"**
-- Check your `ANTHROPIC_API_KEY` in `.env`
+- Check your API keys in `.env` file:
+  - `ANTHROPIC_API_KEY` should start with `sk-ant-`
+  - `OPENROUTER_API_KEY` should start with `sk-or-`
 - Verify internet connection
 - Ensure API key has sufficient credits
+- Try the first-time setup configuration popup
+
+**❌ "Invalid API key format"**
+- Anthropic keys must start with `sk-ant-`
+- OpenRouter keys must start with `sk-or-`
+- Check for extra spaces or missing characters
+
+**❌ "Examples not loading"**
+- Check that examples files are present in `assets/examples/`
+- Try restarting the application
+- Check console logs for path errors
 
 **❌ "Server failed to start"**
 - Check if port 3000 is available
@@ -197,6 +227,7 @@ veo3-angel/
 **❌ "Enhancement takes too long"**
 - Large prompts may take 30-60 seconds
 - Check your internet connection
+- Try switching AI provider (Anthropic vs OpenRouter)
 - Try again with shorter input
 
 **❌ "Categories not showing"**
@@ -213,12 +244,44 @@ veo3-angel/
 
 ## API Costs
 
-VEO3-Angel uses Anthropic's Claude AI:
+VEO3-Angel supports multiple AI providers with different pricing:
+
+### Anthropic Claude
 - **Average cost**: $0.01-0.05 per prompt enhancement
 - **Model used**: Claude 3.5 Sonnet
 - **Typical usage**: 1000-3000 tokens per request
+- **Monitor usage**: [Anthropic Console](https://console.anthropic.com/)
 
-Monitor your usage at [Anthropic Console](https://console.anthropic.com/).
+### OpenRouter (300+ Models)
+- **Average cost**: $0.001-0.10 per prompt enhancement (varies by model)
+- **Popular models**: GPT-4, Claude, Gemini, Llama, Mistral
+- **Benefits**: Model variety, competitive pricing, fallback options
+- **Monitor usage**: [OpenRouter Dashboard](https://openrouter.ai/activity)
+
+**Cost-saving tips:**
+- Start with OpenRouter for model variety and competitive pricing
+- Use Anthropic direct for guaranteed Claude access
+- Configure both providers for automatic fallback
+
+## What's New in v1.9.0
+
+### 🚀 Major Features
+- **Multi-Provider Support**: Added OpenRouter integration alongside Anthropic Claude
+- **300+ AI Models**: Access to GPT, Claude, Gemini, Llama, Mistral, and more via OpenRouter
+- **Enhanced First-Time Setup**: Improved configuration popup with proper API key validation
+- **Fixed Examples System**: Resolved path issues preventing examples from loading in installed versions
+
+### 🔧 Technical Improvements
+- **Smart API Key Validation**: Proper validation for both Anthropic (`sk-ant-`) and OpenRouter (`sk-or-`) keys
+- **Modular Examples**: Enhanced example library with organized collections
+- **Better Error Handling**: Improved user feedback for configuration issues
+- **Path Resolution**: Fixed examples directory detection for both development and production
+
+### 🎯 User Experience
+- **Provider Selection**: Choose your preferred AI provider during setup
+- **Fallback Support**: Automatic switching between providers if one fails
+- **Cost Optimization**: Compare pricing across different models and providers
+- **Enhanced Validation**: Clear error messages for API key format issues
 
 ## Privacy & Security
 
