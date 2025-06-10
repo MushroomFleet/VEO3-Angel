@@ -26,6 +26,10 @@ class OpenRouterService {
             'meta-llama/llama-3.1-70b-instruct',
             'google/gemini-pro-1.5'
         ];
+        this.availableModels = [];
+        this.modelsCacheTime = null;
+        this.modelsCacheDuration = 60 * 60 * 1000; // 1 hour in milliseconds
+        this.modelsGrouped = {};
     }
 
     async initialize() {
@@ -338,17 +342,220 @@ Return only valid JSON in this format:
         };
     }
 
+    async fetchAvailableModels(force = false) {
+        // Check if we have cached models and they're still fresh
+        if (!force && this.modelsCacheTime && 
+            (Date.now() - this.modelsCacheTime) < this.modelsCacheDuration &&
+            this.availableModels.length > 0) {
+            logger.info('Using cached models data');
+            return {
+                success: true,
+                models: this.availableModels,
+                grouped: this.modelsGrouped,
+                cached: true
+            };
+        }
+
+        if (!this.isInitialized) {
+            logger.warn('Cannot fetch models - service not initialized');
+            return {
+                success: false,
+                message: 'Service not initialized',
+                models: this.models, // Fallback to hardcoded models
+                grouped: this.groupModelsByProvider(this.models.map(id => ({ id })))
+            };
+        }
+
+        try {
+            logger.info('Fetching available models from OpenRouter API');
+            
+            const response = await fetch('https://openrouter.ai/api/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    'HTTP-Referer': 'https://veo3-angel.app',
+                    'X-Title': 'VEO3-Angel',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.data || !Array.isArray(data.data)) {
+                throw new Error('Invalid response format from OpenRouter API');
+            }
+
+            // Filter models to only include those that support chat completions
+            const chatModels = data.data.filter(model => {
+                // Check if model supports chat completions and is not deprecated
+                return model.id && 
+                       !model.id.includes('instruct:') && // Skip instruct variants
+                       !model.description?.toLowerCase().includes('deprecated') &&
+                       model.context_length > 0;
+            });
+
+            // Sort by popularity/provider preference
+            const sortedModels = this.sortModelsByPreference(chatModels);
+            
+            // Update cache
+            this.availableModels = sortedModels;
+            this.modelsGrouped = this.groupModelsByProvider(sortedModels);
+            this.modelsCacheTime = Date.now();
+
+            logger.info(`Successfully fetched ${sortedModels.length} available models`);
+            
+            return {
+                success: true,
+                models: sortedModels,
+                grouped: this.modelsGrouped,
+                cached: false,
+                totalFetched: data.data.length,
+                chatCompatible: sortedModels.length
+            };
+
+        } catch (error) {
+            logger.error('Failed to fetch available models:', error);
+            
+            // Fallback to hardcoded models
+            const fallbackGrouped = this.groupModelsByProvider(
+                this.models.map(id => ({ id, name: id.split('/').pop(), fallback: true }))
+            );
+            
+            return {
+                success: false,
+                message: `Failed to fetch models: ${error.message}`,
+                models: this.models.map(id => ({ id, name: id.split('/').pop(), fallback: true })),
+                grouped: fallbackGrouped,
+                error: error.message
+            };
+        }
+    }
+
+    sortModelsByPreference(models) {
+        // Define provider preference order
+        const providerOrder = {
+            'anthropic': 1,
+            'openai': 2,
+            'google': 3,
+            'meta-llama': 4,
+            'mistral': 5,
+            'cohere': 6
+        };
+
+        return models.sort((a, b) => {
+            const providerA = a.id.split('/')[0];
+            const providerB = b.id.split('/')[0];
+            
+            const orderA = providerOrder[providerA] || 99;
+            const orderB = providerOrder[providerB] || 99;
+            
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+            
+            // Within same provider, sort by name
+            return a.id.localeCompare(b.id);
+        });
+    }
+
+    groupModelsByProvider(models) {
+        const grouped = {};
+        
+        models.forEach(model => {
+            const provider = model.id.split('/')[0];
+            
+            if (!grouped[provider]) {
+                grouped[provider] = {
+                    name: this.getProviderDisplayName(provider),
+                    models: []
+                };
+            }
+            
+            grouped[provider].models.push({
+                id: model.id,
+                name: model.name || model.id.split('/').pop(),
+                description: model.description || '',
+                contextLength: model.context_length || 0,
+                pricing: model.pricing || null,
+                fallback: model.fallback || false
+            });
+        });
+        
+        return grouped;
+    }
+
+    getProviderDisplayName(provider) {
+        const providerNames = {
+            'anthropic': 'Anthropic',
+            'openai': 'OpenAI',
+            'google': 'Google',
+            'meta-llama': 'Meta (Llama)',
+            'mistral': 'Mistral AI',
+            'cohere': 'Cohere',
+            'huggingface': 'Hugging Face',
+            'microsoft': 'Microsoft',
+            'perplexity': 'Perplexity',
+            'together': 'Together AI'
+        };
+        
+        return providerNames[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
+    }
+
+    async getModelInfo(modelId) {
+        const models = await this.fetchAvailableModels();
+        
+        if (models.success) {
+            return models.models.find(model => model.id === modelId) || null;
+        }
+        
+        return null;
+    }
+
+    async isModelAvailable(modelId) {
+        const models = await this.fetchAvailableModels();
+        
+        if (models.success) {
+            return models.models.some(model => model.id === modelId);
+        }
+        
+        // Fallback to hardcoded list
+        return this.models.includes(modelId);
+    }
+
     getAvailableModels() {
+        // Return cached models if available, otherwise return hardcoded list
+        if (this.availableModels.length > 0) {
+            return this.availableModels.map(model => model.id);
+        }
         return this.models;
     }
 
+    async getDynamicModels() {
+        return await this.fetchAvailableModels();
+    }
+
     setDefaultModel(model) {
-        if (this.models.includes(model)) {
+        // Check both dynamic and hardcoded models
+        const isAvailable = this.availableModels.some(m => m.id === model) || 
+                           this.models.includes(model);
+        
+        if (isAvailable) {
             this.defaultModel = model;
             logger.info(`Default model changed to: ${model}`);
             return true;
         }
         return false;
+    }
+
+    clearModelsCache() {
+        this.availableModels = [];
+        this.modelsGrouped = {};
+        this.modelsCacheTime = null;
+        logger.info('Models cache cleared');
     }
 }
 

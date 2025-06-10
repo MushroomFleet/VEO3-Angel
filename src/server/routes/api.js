@@ -443,6 +443,199 @@ router.get('/models', asyncHandler(async (req, res) => {
     });
 }));
 
+// GET /api/openrouter/models - Fetch all available OpenRouter models
+router.get('/openrouter/models', asyncHandler(async (req, res) => {
+    const { force = false, grouped = false } = req.query;
+    
+    try {
+        const result = await openrouterService.fetchAvailableModels(force === 'true');
+        
+        if (grouped === 'true') {
+            res.json({
+                success: result.success,
+                data: {
+                    grouped: result.grouped,
+                    metadata: {
+                        cached: result.cached,
+                        totalFetched: result.totalFetched,
+                        chatCompatible: result.chatCompatible,
+                        timestamp: new Date().toISOString()
+                    }
+                },
+                message: result.message
+            });
+        } else {
+            res.json({
+                success: result.success,
+                data: {
+                    models: result.models,
+                    metadata: {
+                        cached: result.cached,
+                        totalFetched: result.totalFetched,
+                        chatCompatible: result.chatCompatible,
+                        timestamp: new Date().toISOString()
+                    }
+                },
+                message: result.message
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch models',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/openrouter/models/refresh - Force refresh the models cache
+router.post('/openrouter/models/refresh', asyncHandler(async (req, res) => {
+    try {
+        // Clear cache first
+        openrouterService.clearModelsCache();
+        
+        // Fetch fresh models
+        const result = await openrouterService.fetchAvailableModels(true);
+        
+        res.json({
+            success: result.success,
+            data: {
+                models: result.models,
+                grouped: result.grouped,
+                metadata: {
+                    totalFetched: result.totalFetched,
+                    chatCompatible: result.chatCompatible,
+                    refreshedAt: new Date().toISOString()
+                }
+            },
+            message: result.success ? 
+                `Successfully refreshed ${result.chatCompatible} models` : 
+                result.message
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to refresh models',
+            message: error.message
+        });
+    }
+}));
+
+// GET /api/openrouter/model/:modelId - Get information about a specific model
+router.get('/openrouter/model/:modelId(*)', asyncHandler(async (req, res) => {
+    const { modelId } = req.params;
+    
+    if (!modelId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid input',
+            message: 'modelId is required'
+        });
+    }
+    
+    try {
+        const modelInfo = await openrouterService.getModelInfo(modelId);
+        
+        if (!modelInfo) {
+            return res.status(404).json({
+                success: false,
+                error: 'Model not found',
+                message: `Model '${modelId}' not found in available models`
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: modelInfo
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get model info',
+            message: error.message
+        });
+    }
+}));
+
+// POST /api/openrouter/set-default-model - Set the default OpenRouter model
+router.post('/openrouter/set-default-model', asyncHandler(async (req, res) => {
+    const { model } = req.body;
+    
+    if (!model || typeof model !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid input',
+            message: 'model is required and must be a string'
+        });
+    }
+    
+    try {
+        // Check if model is available
+        const isAvailable = await openrouterService.isModelAvailable(model);
+        
+        if (!isAvailable) {
+            return res.status(400).json({
+                success: false,
+                error: 'Model not available',
+                message: `Model '${model}' is not available or not found`
+            });
+        }
+        
+        const success = openrouterService.setDefaultModel(model);
+        
+        if (success) {
+            res.json({
+                success: true,
+                data: {
+                    message: `Default model set to '${model}'`,
+                    defaultModel: model
+                }
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: 'Failed to set default model',
+                message: 'Model validation failed'
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to set default model',
+            message: error.message
+        });
+    }
+}));
+
+// GET /api/openrouter/status - Get OpenRouter service status including model info
+router.get('/openrouter/status', asyncHandler(async (req, res) => {
+    try {
+        const status = openrouterService.getStatus();
+        const modelsData = await openrouterService.getDynamicModels();
+        
+        res.json({
+            success: true,
+            data: {
+                ...status,
+                dynamicModels: {
+                    available: modelsData.success,
+                    count: modelsData.models ? modelsData.models.length : 0,
+                    cached: modelsData.cached,
+                    lastFetch: openrouterService.modelsCacheTime ? 
+                        new Date(openrouterService.modelsCacheTime).toISOString() : null,
+                    error: modelsData.error || null
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get OpenRouter status',
+            message: error.message
+        });
+    }
+}));
+
 // POST /api/test-providers
 router.post('/test-providers', asyncHandler(async (req, res) => {
     const results = await providerManager.testProviders();

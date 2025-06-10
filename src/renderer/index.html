@@ -219,7 +219,12 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-gray-600 mb-1">Default Model</label>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs text-gray-600">Default Model</label>
+                                        <button id="refreshModelsBtn" class="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 focus:outline-none disabled:opacity-50">
+                                            🔄 Refresh
+                                        </button>
+                                    </div>
                                     <select id="openrouterModel" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
                                         <option value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
                                         <option value="openai/gpt-4o">GPT-4 Omni</option>

@@ -55,6 +55,10 @@ class VEO3Angel {
         document.getElementById('testAllProvidersBtn').addEventListener('click', () => this.testAllProviders());
         document.getElementById('enableFallback').addEventListener('change', (e) => this.toggleFallback(e.target.checked));
         
+        // OpenRouter model management
+        document.getElementById('refreshModelsBtn')?.addEventListener('click', () => this.refreshOpenRouterModels());
+        document.getElementById('openrouterModel').addEventListener('change', (e) => this.setOpenRouterDefaultModel(e.target.value));
+        
         // Configuration modal
         document.getElementById('configForm').addEventListener('submit', (e) => this.handleConfigSubmit(e));
         document.getElementById('configCancelBtn').addEventListener('click', () => this.hideConfigModal());
@@ -397,6 +401,9 @@ class VEO3Angel {
         
         // Update settings content
         await this.updateSettingsContent();
+        
+        // Load OpenRouter models if not already loaded
+        await this.loadOpenRouterModels();
     }
 
     hideSettings() {
@@ -849,6 +856,184 @@ class VEO3Angel {
             statusText.textContent = 'Not configured';
             statusText.className = 'text-xs text-gray-600';
         }
+    }
+
+    // OpenRouter Model Management Methods
+    async loadOpenRouterModels() {
+        try {
+            const response = await fetch(`${this.apiBase}/openrouter/models?grouped=true`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.populateModelDropdown(data.data.grouped);
+                this.showModelStatus(data.data.metadata);
+                console.log('📋 Loaded OpenRouter models:', data.data.metadata);
+            } else {
+                console.warn('⚠️ Failed to load OpenRouter models:', data.message);
+                this.showToast('Failed to load models from OpenRouter', 'warning');
+            }
+        } catch (error) {
+            console.error('❌ Error loading OpenRouter models:', error);
+            this.showToast('Error loading OpenRouter models', 'error');
+        }
+    }
+
+    async refreshOpenRouterModels() {
+        const button = document.getElementById('refreshModelsBtn');
+        if (!button) return;
+        
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Refreshing...';
+        
+        try {
+            this.showToast('Refreshing models from OpenRouter...', 'info');
+            
+            const response = await fetch(`${this.apiBase}/openrouter/models/refresh`, {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.populateModelDropdown(data.data.grouped);
+                this.showModelStatus(data.data.metadata);
+                this.showToast(`Refreshed ${data.data.metadata.chatCompatible} models`, 'success');
+                console.log('🔄 Models refreshed:', data.data.metadata);
+            } else {
+                throw new Error(data.message || 'Failed to refresh models');
+            }
+        } catch (error) {
+            console.error('❌ Model refresh failed:', error);
+            this.showToast(`Failed to refresh models: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    populateModelDropdown(groupedModels) {
+        const select = document.getElementById('openrouterModel');
+        if (!select) return;
+        
+        // Save current selection
+        const currentValue = select.value;
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a model...';
+        defaultOption.disabled = true;
+        select.appendChild(defaultOption);
+        
+        // Group models by provider
+        Object.entries(groupedModels).forEach(([provider, providerData]) => {
+            if (providerData.models && providerData.models.length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = providerData.name;
+                
+                providerData.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    
+                    // Format display name with context length if available
+                    let displayName = model.name;
+                    if (model.contextLength) {
+                        const contextK = Math.floor(model.contextLength / 1000);
+                        displayName += ` (${contextK}K context)`;
+                    }
+                    if (model.fallback) {
+                        displayName += ' [Fallback]';
+                    }
+                    
+                    option.textContent = displayName;
+                    option.title = model.description || '';
+                    
+                    optgroup.appendChild(option);
+                });
+                
+                select.appendChild(optgroup);
+            }
+        });
+        
+        // Restore selection if it still exists
+        if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+            select.value = currentValue;
+        } else if (select.options.length > 1) {
+            // Default to first available model if no selection
+            select.selectedIndex = 1;
+        }
+    }
+
+    showModelStatus(metadata) {
+        // Create or update model status info
+        let statusDiv = document.getElementById('modelStatus');
+        
+        if (!statusDiv) {
+            // Create status div if it doesn't exist
+            const openrouterSection = document.getElementById('openrouterModel').parentElement;
+            statusDiv = document.createElement('div');
+            statusDiv.id = 'modelStatus';
+            statusDiv.className = 'text-xs text-gray-600 mt-2';
+            openrouterSection.appendChild(statusDiv);
+        }
+        
+        const statusParts = [];
+        if (metadata.chatCompatible) {
+            statusParts.push(`${metadata.chatCompatible} models available`);
+        }
+        if (metadata.cached) {
+            statusParts.push('(cached)');
+        }
+        if (metadata.refreshedAt || metadata.timestamp) {
+            const time = new Date(metadata.refreshedAt || metadata.timestamp).toLocaleTimeString();
+            statusParts.push(`updated ${time}`);
+        }
+        
+        statusDiv.textContent = statusParts.join(' • ');
+    }
+
+    async setOpenRouterDefaultModel(modelId) {
+        if (!modelId) return;
+        
+        try {
+            const response = await fetch(`${this.apiBase}/openrouter/set-default-model`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: modelId })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast(`Default model set to ${modelId.split('/').pop()}`, 'success');
+                console.log('✅ Default model updated:', modelId);
+            } else {
+                throw new Error(data.message || 'Failed to set default model');
+            }
+        } catch (error) {
+            console.error('❌ Failed to set default model:', error);
+            this.showToast(`Failed to set default model: ${error.message}`, 'error');
+        }
+    }
+
+    async getOpenRouterStatus() {
+        try {
+            const response = await fetch(`${this.apiBase}/openrouter/status`);
+            const data = await response.json();
+            
+            if (data.success) {
+                return data.data;
+            }
+        } catch (error) {
+            console.error('❌ Failed to get OpenRouter status:', error);
+        }
+        return null;
     }
 }
 

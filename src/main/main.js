@@ -341,12 +341,14 @@ class VEO3AngelApp {
             type: 'info',
             title: 'About VEO3-Angel',
             message: 'VEO3-Angel',
-            detail: `Version: 1.6.0
+            detail: `Version: 1.7.5
 Platform: ${process.platform}
 Electron: ${process.versions.electron}
 Node.js: ${process.versions.node}
 
 VEO3-Angel is a desktop application that helps enhance basic video ideas into detailed, optimized prompts for Google's VEO3 video generation model.
+
+New in v1.7.5: Dynamic OpenRouter model selection with 300+ AI models available!
 
 Created with ❤️ for the video generation community.`,
             buttons: ['OK']
@@ -355,7 +357,7 @@ Created with ❤️ for the video generation community.`,
 
     showSystemInfo() {
         const info = {
-            'Application Version': '1.6.0',
+            'Application Version': '1.7.5',
             'Electron Version': process.versions.electron,
             'Node.js Version': process.versions.node,
             'Chrome Version': process.versions.chrome,
