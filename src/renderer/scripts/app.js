@@ -570,27 +570,48 @@ class VEO3Angel {
     async handleConfigSubmit(e) {
         e.preventDefault();
         
+        const provider = document.getElementById('providerSelect').value;
         const apiKey = document.getElementById('apiKeyInput').value.trim();
+        
+        if (!provider) {
+            this.showConfigMessage('Please select a provider', 'error');
+            return;
+        }
+        
         if (!apiKey) {
             this.showConfigMessage('Please enter your API key', 'error');
+            return;
+        }
+        
+        // Validate API key format based on provider
+        if (provider === 'anthropic' && !apiKey.startsWith('sk-ant-')) {
+            this.showConfigMessage('Anthropic API keys should start with "sk-ant-"', 'error');
+            return;
+        }
+        
+        if (provider === 'openrouter' && !apiKey.startsWith('sk-or-')) {
+            this.showConfigMessage('OpenRouter API keys should start with "sk-or-"', 'error');
             return;
         }
         
         this.setConfigSubmitState(true);
         
         try {
-            const response = await fetch(`${this.apiBase}/configure-api-key`, {
+            const response = await fetch(`${this.apiBase}/configure-provider`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ apiKey })
+                body: JSON.stringify({ 
+                    provider: provider,
+                    apiKey: apiKey 
+                })
             });
             
             const data = await response.json();
             
             if (data.success) {
-                this.showConfigMessage('API key configured successfully!', 'success');
+                this.showConfigMessage(`${provider} configured successfully!`, 'success');
                 
                 // Hide config modal and show restart modal after a delay
                 setTimeout(() => {

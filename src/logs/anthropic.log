@@ -7,3 +7,7 @@
 {"level":"info","message":"Anthropic service initialized successfully","timestamp":"2025-06-10T03:19:20.524Z"}
 {"level":"info","message":"Anthropic API connection test successful","timestamp":"2025-06-10T03:28:35.684Z"}
 {"level":"info","message":"Anthropic service initialized successfully","timestamp":"2025-06-10T03:28:35.685Z"}
+{"level":"info","message":"Anthropic API connection test successful","timestamp":"2025-06-10T03:54:02.241Z"}
+{"level":"info","message":"Anthropic service initialized successfully","timestamp":"2025-06-10T03:54:02.241Z"}
+{"level":"info","message":"Processing prompt enhancement request","timestamp":"2025-06-10T03:54:36.604Z","useExamples":true,"userPromptLength":19}
+{"inputLength":19,"level":"info","message":"Prompt enhancement completed","outputLength":2435,"timestamp":"2025-06-10T03:54:48.983Z"}

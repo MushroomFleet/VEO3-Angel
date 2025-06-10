@@ -43,3 +43,12 @@
 {"inputLength":46,"level":"info","message":"Prompt enhancement completed","model":"anthropic/claude-2","outputLength":1650,"timestamp":"2025-06-10T03:30:48.258Z"}
 {"level":"info","message":"Processing prompt enhancement request","model":"anthropic/claude-sonnet-4","timestamp":"2025-06-10T03:31:47.673Z","useExamples":true,"userPromptLength":46}
 {"inputLength":46,"level":"info","message":"Prompt enhancement completed","model":"anthropic/claude-sonnet-4","outputLength":3435,"timestamp":"2025-06-10T03:32:03.798Z"}
+{"level":"info","message":"OpenRouter API connection test successful","timestamp":"2025-06-10T03:54:03.008Z"}
+{"level":"info","message":"OpenRouter service initialized successfully","timestamp":"2025-06-10T03:54:03.008Z"}
+{"level":"info","message":"Fetching available models from OpenRouter API","timestamp":"2025-06-10T03:54:11.017Z"}
+{"level":"info","message":"Successfully fetched 302 available models","timestamp":"2025-06-10T03:54:11.620Z"}
+{"level":"info","message":"Using cached models data","timestamp":"2025-06-10T03:55:00.994Z"}
+{"level":"info","message":"Using cached models data","timestamp":"2025-06-10T03:55:08.051Z"}
+{"level":"info","message":"Default model changed to: anthropic/claude-sonnet-4","timestamp":"2025-06-10T03:55:08.051Z"}
+{"level":"info","message":"Processing prompt enhancement request","model":"anthropic/claude-sonnet-4","timestamp":"2025-06-10T03:55:19.864Z","useExamples":true,"userPromptLength":19}
+{"inputLength":19,"level":"info","message":"Prompt enhancement completed","model":"anthropic/claude-sonnet-4","outputLength":2708,"timestamp":"2025-06-10T03:55:33.632Z"}

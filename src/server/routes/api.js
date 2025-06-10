@@ -206,6 +206,36 @@ router.get('/examples/list', asyncHandler(async (req, res) => {
     }
 }));
 
+// GET /api/examples/debug - Debug endpoint to show path information
+router.get('/examples/debug', asyncHandler(async (req, res) => {
+    const examplesDir = getExamplesDirectory();
+    const isPackaged = process.mainModule && process.mainModule.filename.indexOf('app.asar') !== -1;
+    const dirExists = await fs.pathExists(examplesDir);
+    
+    let fileList = [];
+    if (dirExists) {
+        try {
+            const files = await fs.readdir(examplesDir);
+            fileList = files.filter(file => file.endsWith('.md'));
+        } catch (error) {
+            fileList = [`Error reading directory: ${error.message}`];
+        }
+    }
+    
+    res.json({
+        success: true,
+        data: {
+            examplesDirectory: examplesDir,
+            isPackaged: isPackaged,
+            directoryExists: dirExists,
+            processWorkingDirectory: process.cwd(),
+            processExecutablePath: process.execPath,
+            mainModuleFilename: process.mainModule ? process.mainModule.filename : 'undefined',
+            exampleFiles: fileList
+        }
+    });
+}));
+
 // GET /api/examples/file/:filename - Get examples from specific file
 router.get('/examples/file/:filename', asyncHandler(async (req, res) => {
     const { filename } = req.params;
@@ -738,9 +768,10 @@ router.post('/enable-fallback', asyncHandler(async (req, res) => {
 
 // Helper function to get available example files
 async function getAvailableExampleFiles() {
-    const examplesDir = path.join(process.cwd(), '..', 'assets', 'examples');
+    const examplesDir = getExamplesDirectory();
     
     if (!await fs.pathExists(examplesDir)) {
+        console.warn(`Examples directory not found: ${examplesDir}`);
         return [];
     }
     
@@ -753,12 +784,28 @@ async function getAvailableExampleFiles() {
             path: path.join(examplesDir, file)
         }));
     
+    console.log(`Found ${mdFiles.length} example files in: ${examplesDir}`);
     return mdFiles;
+}
+
+// Helper function to determine the correct examples directory path
+function getExamplesDirectory() {
+    // Check if we're in a packaged Electron app
+    const isPackaged = process.mainModule && process.mainModule.filename.indexOf('app.asar') !== -1;
+    
+    if (isPackaged) {
+        // In packaged app: use resources/assets/examples
+        const appPath = path.dirname(process.execPath);
+        return path.join(appPath, 'resources', 'assets', 'examples');
+    } else {
+        // In development: assets are in the current working directory
+        return path.join(process.cwd(), 'assets', 'examples');
+    }
 }
 
 // Helper function to get examples from a specific file
 async function getExamplesFromFile(filename) {
-    const examplesDir = path.join(process.cwd(), '..', 'assets', 'examples');
+    const examplesDir = getExamplesDirectory();
     const filePath = path.join(examplesDir, filename);
     
     if (!await fs.pathExists(filePath)) {
