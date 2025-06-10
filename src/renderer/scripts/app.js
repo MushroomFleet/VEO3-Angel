@@ -59,14 +59,22 @@ class VEO3Angel {
         document.getElementById('refreshModelsBtn')?.addEventListener('click', () => this.refreshOpenRouterModels());
         document.getElementById('openrouterModel').addEventListener('change', (e) => this.setOpenRouterDefaultModel(e.target.value));
         
+        // Main UI model selector
+        document.getElementById('modelSelect')?.addEventListener('change', (e) => this.onMainModelChange(e.target.value));
+        
         // Configuration modal
         document.getElementById('configForm').addEventListener('submit', (e) => this.handleConfigSubmit(e));
         document.getElementById('configCancelBtn').addEventListener('click', () => this.hideConfigModal());
-        document.getElementById('getApiKeyLink').addEventListener('click', (e) => this.openAnthropicConsole(e));
+        document.getElementById('getApiKeyLink').addEventListener('click', (e) => this.openApiKeyPage(e));
+        document.getElementById('providerSelect').addEventListener('change', (e) => this.onProviderSelectionChange(e.target.value));
         
         // Restart modal
         document.getElementById('restartNowBtn').addEventListener('click', () => this.restartApp());
         document.getElementById('restartLaterBtn').addEventListener('click', () => this.hideRestartModal());
+        
+        // Examples functionality
+        document.getElementById('useExamples').addEventListener('change', (e) => this.toggleExamplesSection(e.target.checked));
+        document.getElementById('examplesSelect').addEventListener('change', (e) => this.onExampleFileSelected(e.target.value));
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
@@ -76,6 +84,12 @@ class VEO3Angel {
             const btn = document.getElementById('enhanceBtn');
             btn.disabled = e.target.value.trim().length === 0 || this.isProcessing;
         });
+        
+        // Load available example files
+        this.loadAvailableExampleFiles();
+        
+        // Load OpenRouter models for main UI dropdown
+        this.loadOpenRouterModels();
     }
 
     async checkStatus() {
@@ -189,20 +203,38 @@ class VEO3Angel {
         
         try {
             const useExamples = document.getElementById('useExamples').checked;
+            const selectedExampleFile = useExamples ? document.getElementById('examplesSelect').value : null;
             const includeCategories = this.currentView === 'detailed';
             
-            console.log('🔄 Enhancing prompt:', { userPrompt, useExamples, includeCategories });
+            // Get selected model from main UI or settings
+            const mainModelSelect = document.getElementById('modelSelect');
+            const settingsModelSelect = document.getElementById('openrouterModel');
+            const selectedModel = mainModelSelect?.value || settingsModelSelect?.value || null;
+            
+            const requestBody = {
+                userPrompt,
+                useExamples,
+                includeCategories
+            };
+            
+            // Add selected example file if examples are enabled and a file is selected
+            if (useExamples && selectedExampleFile) {
+                requestBody.exampleFile = selectedExampleFile;
+            }
+            
+            // Add model selection if specified
+            if (selectedModel) {
+                requestBody.model = selectedModel;
+            }
+            
+            console.log('🔄 Enhancing prompt:', requestBody);
             
             const response = await fetch(`${this.apiBase}/enhance-prompt`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    userPrompt,
-                    useExamples,
-                    includeCategories
-                })
+                body: JSON.stringify(requestBody)
             });
             
             const data = await response.json();
@@ -621,6 +653,62 @@ class VEO3Angel {
         messageDiv.classList.add('hidden');
     }
 
+    onProviderSelectionChange(provider) {
+        const apiKeySection = document.getElementById('apiKeySection');
+        const apiKeyLabel = document.getElementById('apiKeyLabel');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiKeyHint = document.getElementById('apiKeyHint');
+        const getApiKeyLink = document.getElementById('getApiKeyLink');
+        
+        if (provider) {
+            // Show the API key section
+            apiKeySection.classList.remove('hidden');
+            
+            // Update labels and placeholders based on provider
+            if (provider === 'anthropic') {
+                apiKeyLabel.textContent = 'Anthropic API Key';
+                apiKeyInput.placeholder = 'sk-ant-...';
+                apiKeyHint.textContent = 'Your API key is stored locally and securely';
+                getApiKeyLink.textContent = 'Get Anthropic API Key →';
+                getApiKeyLink.href = 'https://console.anthropic.com/';
+            } else if (provider === 'openrouter') {
+                apiKeyLabel.textContent = 'OpenRouter API Key';
+                apiKeyInput.placeholder = 'sk-or-...';
+                apiKeyHint.textContent = 'Access to 300+ models with one API key';
+                getApiKeyLink.textContent = 'Get OpenRouter API Key →';
+                getApiKeyLink.href = 'https://openrouter.ai/keys';
+            }
+            
+            // Clear any previous input
+            apiKeyInput.value = '';
+        } else {
+            // Hide the API key section
+            apiKeySection.classList.add('hidden');
+        }
+    }
+
+    openApiKeyPage(e) {
+        e.preventDefault();
+        
+        const provider = document.getElementById('providerSelect').value;
+        let url = '';
+        
+        if (provider === 'anthropic') {
+            url = 'https://console.anthropic.com/';
+        } else if (provider === 'openrouter') {
+            url = 'https://openrouter.ai/keys';
+        }
+        
+        if (url) {
+            // Use Electron's shell.openExternal if available, otherwise fallback to window.open
+            if (window.electronAPI && window.electronAPI.openExternal) {
+                window.electronAPI.openExternal(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+    }
+
     openAnthropicConsole(e) {
         e.preventDefault();
         
@@ -913,6 +1001,12 @@ class VEO3Angel {
     }
 
     populateModelDropdown(groupedModels) {
+        // Populate both the settings dropdown and main UI dropdown
+        this.populateSettingsModelDropdown(groupedModels);
+        this.populateMainModelDropdown(groupedModels);
+    }
+
+    populateSettingsModelDropdown(groupedModels) {
         const select = document.getElementById('openrouterModel');
         if (!select) return;
         
@@ -965,6 +1059,108 @@ class VEO3Angel {
         } else if (select.options.length > 1) {
             // Default to first available model if no selection
             select.selectedIndex = 1;
+        }
+    }
+
+    populateMainModelDropdown(groupedModels) {
+        const select = document.getElementById('modelSelect');
+        if (!select) return;
+        
+        // Save current selection
+        const currentValue = select.value;
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Use provider default';
+        select.appendChild(defaultOption);
+        
+        // Collect all models and create popular models section
+        const allModels = [];
+        Object.entries(groupedModels).forEach(([provider, providerData]) => {
+            if (providerData.models && providerData.models.length > 0) {
+                providerData.models.forEach(model => {
+                    allModels.push({
+                        ...model,
+                        providerName: providerData.name
+                    });
+                });
+            }
+        });
+        
+        // Popular models (prioritize these)
+        const popularModels = [
+            'anthropic/claude-3-5-sonnet-20241022',
+            'anthropic/claude-3-5-sonnet-20241022-v2',
+            'anthropic/claude-3-5-haiku-20241022', 
+            'anthropic/claude-3-opus-20240229',
+            'openai/gpt-4o',
+            'openai/gpt-4o-mini',
+            'openai/o1-preview',
+            'openai/o1-mini',
+            'meta-llama/llama-3.1-70b-instruct',
+            'meta-llama/llama-3.1-405b-instruct',
+            'google/gemini-pro-1.5',
+            'anthropic/claude-3-sonnet-20240229'
+        ];
+        
+        // Create Popular Models group
+        const popularGroup = document.createElement('optgroup');
+        popularGroup.label = '🌟 Popular Models';
+        
+        popularModels.forEach(modelId => {
+            const model = allModels.find(m => m.id === modelId);
+            if (model) {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = `${model.name}`;
+                option.title = `${model.providerName} - ${model.description || ''}`;
+                popularGroup.appendChild(option);
+            }
+        });
+        
+        if (popularGroup.children.length > 0) {
+            select.appendChild(popularGroup);
+        }
+        
+        // Group remaining models by provider
+        Object.entries(groupedModels).forEach(([provider, providerData]) => {
+            if (providerData.models && providerData.models.length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = providerData.name;
+                
+                providerData.models.forEach(model => {
+                    // Skip if already in popular section
+                    if (popularModels.includes(model.id)) return;
+                    
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    
+                    // Shorter display name for main UI
+                    let displayName = model.name;
+                    if (model.contextLength && model.contextLength >= 100000) {
+                        const contextK = Math.floor(model.contextLength / 1000);
+                        displayName += ` (${contextK}K)`;
+                    }
+                    
+                    option.textContent = displayName;
+                    option.title = model.description || '';
+                    
+                    optgroup.appendChild(option);
+                });
+                
+                if (optgroup.children.length > 0) {
+                    select.appendChild(optgroup);
+                }
+            }
+        });
+        
+        // Restore selection if it still exists
+        if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+            select.value = currentValue;
         }
     }
 
@@ -1022,6 +1218,16 @@ class VEO3Angel {
         }
     }
 
+    onMainModelChange(modelId) {
+        if (modelId) {
+            const modelName = modelId.split('/').pop() || modelId;
+            this.showToast(`Selected model: ${modelName}`, 'info', 2000);
+            console.log(`🎯 Model selected: ${modelId}`);
+        } else {
+            console.log(`🎯 Using provider default model`);
+        }
+    }
+
     async getOpenRouterStatus() {
         try {
             const response = await fetch(`${this.apiBase}/openrouter/status`);
@@ -1034,6 +1240,124 @@ class VEO3Angel {
             console.error('❌ Failed to get OpenRouter status:', error);
         }
         return null;
+    }
+
+    // Examples Management Methods
+    async loadAvailableExampleFiles() {
+        try {
+            const response = await fetch(`${this.apiBase}/examples/list`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.populateExamplesDropdown(data.data);
+                console.log('📋 Loaded example files:', data.data);
+            } else {
+                console.warn('⚠️ Failed to load example files:', data.message);
+            }
+        } catch (error) {
+            console.error('❌ Error loading example files:', error);
+        }
+    }
+
+    populateExamplesDropdown(files) {
+        const select = document.getElementById('examplesSelect');
+        if (!select) return;
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select example collection...';
+        select.appendChild(defaultOption);
+        
+        // Add each example file
+        files.forEach(file => {
+            const option = document.createElement('option');
+            option.value = file.filename;
+            
+            // Simple filename transformation: remove .md and replace hyphens with spaces
+            const displayName = file.filename.replace('.md', '').replace(/-/g, ' ');
+            
+            option.textContent = displayName;
+            option.title = file.description || '';
+            
+            select.appendChild(option);
+        });
+        
+        // Set default selection to default-examples.md
+        if (files.some(f => f.filename === 'default-examples.md')) {
+            select.value = 'default-examples.md';
+        }
+    }
+
+    toggleExamplesSection(enabled) {
+        const section = document.getElementById('examplesSection');
+        const checkbox = document.getElementById('useExamples');
+        
+        if (enabled) {
+            section.classList.remove('hidden');
+            // If no file is selected, default to default-examples.md
+            const select = document.getElementById('examplesSelect');
+            if (!select.value && select.options.length > 1) {
+                select.value = 'default-examples.md';
+            }
+        } else {
+            section.classList.add('hidden');
+        }
+        
+        console.log(`🔄 Examples section ${enabled ? 'shown' : 'hidden'}`);
+    }
+
+    async onExampleFileSelected(filename) {
+        if (!filename) return;
+        
+        try {
+            console.log(`📁 Selected example file: ${filename}`);
+            
+            // Could optionally preview the examples or show count
+            const response = await fetch(`${this.apiBase}/examples/file/${filename}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const count = data.data.length;
+                this.showToast(`Loaded ${count} examples from ${filename.replace('.md', '')}`, 'info', 2000);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading example file:', error);
+            this.showToast('Error loading selected examples', 'error');
+        }
+    }
+
+    async loadRandomExample() {
+        try {
+            // Check if a specific example file is selected
+            const useExamples = document.getElementById('useExamples').checked;
+            const selectedFile = useExamples ? document.getElementById('examplesSelect').value : null;
+            
+            let url = `${this.apiBase}/examples?random=true`;
+            if (selectedFile) {
+                url += `&file=${selectedFile}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                document.getElementById('userPrompt').value = data.data.content;
+                this.updateCharacterCount();
+                
+                const source = selectedFile ? selectedFile.replace('.md', '') : 'default collection';
+                this.showToast(`Random example loaded from ${source}!`, 'info');
+            } else {
+                this.showToast('No examples available', 'warning');
+            }
+        } catch (error) {
+            console.error('❌ Failed to load example:', error);
+            this.showToast('Failed to load example', 'error');
+        }
     }
 }
 

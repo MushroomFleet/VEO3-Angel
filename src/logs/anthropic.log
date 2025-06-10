@@ -1,0 +1,9 @@
+{"level":"warn","message":"ANTHROPIC_API_KEY not found - service will be in configuration required state","timestamp":"2025-06-10T02:55:14.638Z"}
+{"level":"warn","message":"ANTHROPIC_API_KEY not found - service will be in configuration required state","timestamp":"2025-06-10T03:05:57.425Z"}
+{"level":"warn","message":"ANTHROPIC_API_KEY not found - service will be in configuration required state","timestamp":"2025-06-10T03:11:12.173Z"}
+{"level":"info","message":"Anthropic API connection test successful","timestamp":"2025-06-10T03:12:00.678Z"}
+{"level":"info","message":"Anthropic service reconfigured successfully","timestamp":"2025-06-10T03:12:00.679Z"}
+{"level":"info","message":"Anthropic API connection test successful","timestamp":"2025-06-10T03:19:20.523Z"}
+{"level":"info","message":"Anthropic service initialized successfully","timestamp":"2025-06-10T03:19:20.524Z"}
+{"level":"info","message":"Anthropic API connection test successful","timestamp":"2025-06-10T03:28:35.684Z"}
+{"level":"info","message":"Anthropic service initialized successfully","timestamp":"2025-06-10T03:28:35.685Z"}

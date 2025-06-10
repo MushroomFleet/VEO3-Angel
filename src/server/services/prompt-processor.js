@@ -129,33 +129,79 @@ class PromptProcessor {
 
     async loadExamples() {
         try {
+            // Load default examples from the legacy file if it exists
             const assetsPath = getAssetsPath();
-            const examplesPath = path.join(assetsPath, 'prompt-examples.md');
+            const legacyExamplesPath = path.join(assetsPath, 'prompt-examples.md');
             
-            logger.info('Attempting to load examples', {
+            logger.info('Attempting to load default examples', {
                 assetsPath,
+                legacyExamplesPath,
+                exists: await fs.pathExists(legacyExamplesPath)
+            });
+            
+            if (await fs.pathExists(legacyExamplesPath)) {
+                const examplesContent = await fs.readFile(legacyExamplesPath, 'utf8');
+                this.examples = this.parseExamples(examplesContent);
+                logger.info('Legacy examples loaded successfully', {
+                    exampleCount: this.examples.length,
+                    path: legacyExamplesPath
+                });
+            } else {
+                // Try to load from default-examples.md in the new structure
+                const defaultExamplesPath = path.join(assetsPath, 'examples', 'default-examples.md');
+                if (await fs.pathExists(defaultExamplesPath)) {
+                    const examplesContent = await fs.readFile(defaultExamplesPath, 'utf8');
+                    this.examples = this.parseExamples(examplesContent);
+                    logger.info('Default examples loaded from new structure', {
+                        exampleCount: this.examples.length,
+                        path: defaultExamplesPath
+                    });
+                } else {
+                    logger.warn('No examples files found, continuing without examples', {
+                        searchedPaths: [legacyExamplesPath, defaultExamplesPath],
+                        assetsPath
+                    });
+                    this.examples = [];
+                }
+            }
+            
+        } catch (error) {
+            logger.warn('Failed to load examples, continuing without:', error);
+            this.examples = [];
+        }
+    }
+
+    async loadExamplesFromFile(filename) {
+        try {
+            const assetsPath = getAssetsPath();
+            const examplesPath = path.join(assetsPath, 'examples', filename);
+            
+            logger.info('Loading examples from specific file', {
+                filename,
                 examplesPath,
                 exists: await fs.pathExists(examplesPath)
             });
             
             if (await fs.pathExists(examplesPath)) {
                 const examplesContent = await fs.readFile(examplesPath, 'utf8');
-                this.examples = this.parseExamples(examplesContent);
-                logger.info('Examples loaded successfully', {
-                    exampleCount: this.examples.length,
+                const examples = this.parseExamples(examplesContent);
+                logger.info('Examples loaded from file successfully', {
+                    filename,
+                    exampleCount: examples.length,
                     path: examplesPath
                 });
+                return examples;
             } else {
-                logger.warn('Examples file not found, continuing without examples', {
-                    searchedPath: examplesPath,
-                    assetsPath
+                logger.warn('Example file not found', {
+                    filename,
+                    searchedPath: examplesPath
                 });
-                this.examples = [];
+                return [];
             }
             
         } catch (error) {
-            logger.warn('Failed to load examples, continuing without:', error);
-            this.examples = [];
+            logger.error('Failed to load examples from file:', error);
+            return [];
         }
     }
 
@@ -205,7 +251,8 @@ class PromptProcessor {
                 provider = null,
                 model = null,
                 streaming = false,
-                onChunk = null
+                onChunk = null,
+                exampleFile = null
             } = options;
             
             logger.info('Processing prompt enhancement', {
@@ -214,15 +261,33 @@ class PromptProcessor {
                 includeCategories,
                 provider,
                 model,
-                streaming
+                streaming,
+                exampleFile
             });
 
             let enhancedSystemPrompt = this.systemPrompt;
             
             // Add examples context if requested
-            if (useExamples && this.examples.length > 0) {
-                const exampleContext = this.buildExampleContext();
-                enhancedSystemPrompt += `\n\n## Example Prompts for Reference:\n${exampleContext}`;
+            if (useExamples) {
+                let examplesForContext = this.examples;
+                
+                // If a specific example file is requested, load examples from that file
+                if (exampleFile) {
+                    const fileExamples = await this.loadExamplesFromFile(exampleFile);
+                    if (fileExamples.length > 0) {
+                        examplesForContext = fileExamples;
+                        logger.info(`Using examples from specific file: ${exampleFile}`, {
+                            fileExampleCount: fileExamples.length
+                        });
+                    } else {
+                        logger.warn(`No examples found in file ${exampleFile}, falling back to default examples`);
+                    }
+                }
+                
+                if (examplesForContext && examplesForContext.length > 0) {
+                    const exampleContext = this.buildExampleContextFromArray(examplesForContext);
+                    enhancedSystemPrompt += `\n\n## Example Prompts for Reference:\n${exampleContext}`;
+                }
             }
 
             const result = {
@@ -287,13 +352,17 @@ class PromptProcessor {
     }
 
     buildExampleContext() {
-        if (!this.examples || this.examples.length === 0) {
+        return this.buildExampleContextFromArray(this.examples);
+    }
+
+    buildExampleContextFromArray(examples) {
+        if (!examples || examples.length === 0) {
             return '';
         }
 
         // Get a diverse sample of examples
-        const sampleSize = Math.min(5, this.examples.length);
-        const sampledExamples = this.examples
+        const sampleSize = Math.min(5, examples.length);
+        const sampledExamples = examples
             .sort(() => 0.5 - Math.random())
             .slice(0, sampleSize);
 

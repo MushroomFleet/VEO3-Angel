@@ -1,0 +1,36 @@
+{"level":"info","message":"Initializing provider manager...","timestamp":"2025-06-10T02:55:14.638Z"}
+{"configured":false,"level":"info","message":"Provider anthropic initialization: API key configuration required","timestamp":"2025-06-10T02:55:14.639Z"}
+{"configured":false,"level":"info","message":"Provider openrouter initialization: API key configuration required","timestamp":"2025-06-10T02:55:14.639Z"}
+{"level":"warn","message":"No providers are configured","timestamp":"2025-06-10T02:55:14.639Z"}
+{"level":"info","message":"Provider openrouter configured successfully","timestamp":"2025-06-10T02:59:32.824Z"}
+{"level":"info","message":"Set openrouter as preferred provider","timestamp":"2025-06-10T02:59:32.824Z"}
+{"level":"info","message":"Initializing provider manager...","timestamp":"2025-06-10T03:05:57.425Z"}
+{"configured":false,"level":"info","message":"Provider anthropic initialization: API key configuration required","timestamp":"2025-06-10T03:05:57.425Z"}
+{"configured":true,"level":"info","message":"Provider openrouter initialization: Service initialized successfully","timestamp":"2025-06-10T03:05:58.205Z"}
+{"level":"info","message":"Preferred provider not available, switching to: openrouter","timestamp":"2025-06-10T03:05:58.206Z"}
+{"level":"info","message":"Provider manager initialized with 1 configured providers","timestamp":"2025-06-10T03:05:58.206Z"}
+{"level":"info","message":"Provider openrouter configured successfully","timestamp":"2025-06-10T03:06:50.341Z"}
+{"level":"info","message":"Enhancing prompt","provider":"openrouter","streaming":false,"timestamp":"2025-06-10T03:07:50.032Z","userPromptLength":29}
+{"level":"info","message":"Initializing provider manager...","timestamp":"2025-06-10T03:11:12.173Z"}
+{"configured":false,"level":"info","message":"Provider anthropic initialization: API key configuration required","timestamp":"2025-06-10T03:11:12.173Z"}
+{"configured":true,"level":"info","message":"Provider openrouter initialization: Service initialized successfully","timestamp":"2025-06-10T03:11:13.721Z"}
+{"level":"info","message":"Preferred provider not available, switching to: openrouter","timestamp":"2025-06-10T03:11:13.721Z"}
+{"level":"info","message":"Provider manager initialized with 1 configured providers","timestamp":"2025-06-10T03:11:13.721Z"}
+{"level":"info","message":"Preferred provider set to: openrouter","timestamp":"2025-06-10T03:11:33.454Z"}
+{"level":"info","message":"Provider anthropic configured successfully","timestamp":"2025-06-10T03:12:00.679Z"}
+{"level":"info","message":"Enhancing prompt","provider":"openrouter","streaming":false,"timestamp":"2025-06-10T03:12:39.677Z","userPromptLength":21}
+{"level":"info","message":"Initializing provider manager...","timestamp":"2025-06-10T03:19:18.277Z"}
+{"configured":true,"level":"info","message":"Provider anthropic initialization: Service initialized successfully","timestamp":"2025-06-10T03:19:20.524Z"}
+{"configured":true,"level":"info","message":"Provider openrouter initialization: Service initialized successfully","timestamp":"2025-06-10T03:19:21.222Z"}
+{"level":"info","message":"Provider manager initialized with 2 configured providers","timestamp":"2025-06-10T03:19:21.222Z"}
+{"level":"info","message":"Preferred provider set to: openrouter","timestamp":"2025-06-10T03:19:39.692Z"}
+{"level":"info","message":"Provider openrouter configured successfully","timestamp":"2025-06-10T03:19:44.859Z"}
+{"level":"info","message":"Enhancing prompt","provider":"openrouter","streaming":false,"timestamp":"2025-06-10T03:20:56.523Z","userPromptLength":49}
+{"level":"info","message":"Initializing provider manager...","timestamp":"2025-06-10T03:28:33.551Z"}
+{"configured":true,"level":"info","message":"Provider anthropic initialization: Service initialized successfully","timestamp":"2025-06-10T03:28:35.686Z"}
+{"configured":true,"level":"info","message":"Provider openrouter initialization: Service initialized successfully","timestamp":"2025-06-10T03:28:37.215Z"}
+{"level":"info","message":"Provider manager initialized with 2 configured providers","timestamp":"2025-06-10T03:28:37.216Z"}
+{"level":"info","message":"Preferred provider set to: openrouter","timestamp":"2025-06-10T03:29:10.106Z"}
+{"level":"info","message":"Provider openrouter configured successfully","timestamp":"2025-06-10T03:29:23.510Z"}
+{"level":"info","message":"Enhancing prompt","provider":"openrouter","streaming":false,"timestamp":"2025-06-10T03:30:20.964Z","userPromptLength":46}
+{"level":"info","message":"Enhancing prompt","provider":"openrouter","streaming":false,"timestamp":"2025-06-10T03:31:47.673Z","userPromptLength":46}

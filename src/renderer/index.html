@@ -91,9 +91,38 @@
                             </div>
                         </div>
                         
-                        <div class="flex items-center space-x-3">
-                            <input type="checkbox" id="useExamples" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                            <label for="useExamples" class="text-sm text-gray-700">Use example prompts for inspiration</label>
+                        <div class="space-y-3">
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" id="useExamples" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                <label for="useExamples" class="text-sm text-gray-700">Include example prompts for inspiration</label>
+                            </div>
+                            
+                            <div id="examplesSection" class="hidden">
+                                <label for="examplesSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Example Collection:
+                                </label>
+                                <select 
+                                    id="examplesSelect" 
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                    <option value="">Loading examples...</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="modelSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                                    AI Model:
+                                </label>
+                                <select 
+                                    id="modelSelect" 
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                    <option value="">Loading models...</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Select a specific model or use provider default
+                                </p>
+                            </div>
                         </div>
                         
                         <button 
@@ -308,25 +337,40 @@
                     </div>
                 </div>
                 
-                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">API Key Configuration Required</h3>
+                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">Welcome to VEO3-Angel v1.8.0!</h3>
                 <p class="text-sm text-gray-600 text-center mb-6">
-                    VEO3-Angel needs your Anthropic API key to enhance prompts. Your key is stored locally and securely.
+                    Choose your AI provider and configure your API key to get started with video prompt enhancement.
                 </p>
                 
                 <form id="configForm" class="space-y-4">
                     <div>
+                        <label for="providerSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                            Choose AI Provider
+                        </label>
+                        <select 
+                            id="providerSelect" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                            required
+                        >
+                            <option value="">Select a provider...</option>
+                            <option value="anthropic">Anthropic (Claude) - Best for detailed prompts</option>
+                            <option value="openrouter">OpenRouter - Access to 300+ models</option>
+                        </select>
+                    </div>
+                    
+                    <div id="apiKeySection" class="hidden">
                         <label for="apiKeyInput" class="block text-sm font-medium text-gray-700 mb-2">
-                            Anthropic API Key
+                            <span id="apiKeyLabel">API Key</span>
                         </label>
                         <input 
                             type="password" 
                             id="apiKeyInput" 
-                            placeholder="sk-ant-..." 
+                            placeholder="Enter your API key..." 
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                             required
                         >
                         <p class="text-xs text-gray-500 mt-1">
-                            Your API key should start with "sk-ant-"
+                            <span id="apiKeyHint">Your API key is stored locally and securely</span>
                         </p>
                     </div>
                     

@@ -21,7 +21,8 @@ router.post('/enhance-prompt', asyncHandler(async (req, res) => {
         includeCategories = true,
         provider = null,
         model = null,
-        streaming = false
+        streaming = false,
+        exampleFile = null
     } = req.body;
 
     if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.trim().length === 0) {
@@ -57,6 +58,7 @@ router.post('/enhance-prompt', asyncHandler(async (req, res) => {
                 provider,
                 model,
                 streaming: true,
+                exampleFile,
                 onChunk: (chunk) => {
                     enhancedPrompt += chunk;
                     res.write(`data: ${JSON.stringify({ 
@@ -107,7 +109,8 @@ router.post('/enhance-prompt', asyncHandler(async (req, res) => {
         useExamples,
         includeCategories,
         provider,
-        model
+        model,
+        exampleFile
     });
 
     // Log the request
@@ -131,14 +134,44 @@ router.post('/enhance-prompt', asyncHandler(async (req, res) => {
 
 // GET /api/examples
 router.get('/examples', asyncHandler(async (req, res) => {
-    const { category, random } = req.query;
+    const { category, random, file } = req.query;
 
     if (random === 'true') {
-        const example = promptProcessor.getRandomExample();
-        return res.json({
-            success: true,
-            data: example
-        });
+        // If a specific file is requested, get random example from that file
+        if (file) {
+            try {
+                const examples = await getExamplesFromFile(file);
+                if (examples.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * examples.length);
+                    const randomExample = examples[randomIndex];
+                    return res.json({
+                        success: true,
+                        data: {
+                            content: randomExample.prompt,
+                            title: randomExample.title,
+                            source: file
+                        }
+                    });
+                } else {
+                    return res.json({
+                        success: false,
+                        message: `No examples found in file '${file}'`
+                    });
+                }
+            } catch (error) {
+                return res.json({
+                    success: false,
+                    message: `Failed to load examples from file '${file}': ${error.message}`
+                });
+            }
+        } else {
+            // Default behavior - get random example from default collection
+            const example = promptProcessor.getRandomExample();
+            return res.json({
+                success: true,
+                data: example
+            });
+        }
     }
 
     if (category) {
@@ -154,6 +187,48 @@ router.get('/examples', asyncHandler(async (req, res) => {
         success: true,
         data: examples
     });
+}));
+
+// GET /api/examples/list - List all available example files
+router.get('/examples/list', asyncHandler(async (req, res) => {
+    try {
+        const files = await getAvailableExampleFiles();
+        res.json({
+            success: true,
+            data: files
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to list example files',
+            error: error.message
+        });
+    }
+}));
+
+// GET /api/examples/file/:filename - Get examples from specific file
+router.get('/examples/file/:filename', asyncHandler(async (req, res) => {
+    const { filename } = req.params;
+    
+    if (!filename || !filename.endsWith('.md')) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid filename. Must be a .md file'
+        });
+    }
+    
+    try {
+        const examples = await getExamplesFromFile(filename);
+        res.json({
+            success: true,
+            data: examples
+        });
+    } catch (error) {
+        res.status(404).json({
+            success: false,
+            message: `Example file '${filename}' not found`
+        });
+    }
 }));
 
 // POST /api/save-prompt
@@ -660,6 +735,87 @@ router.post('/enable-fallback', asyncHandler(async (req, res) => {
         }
     });
 }));
+
+// Helper function to get available example files
+async function getAvailableExampleFiles() {
+    const examplesDir = path.join(process.cwd(), '..', 'assets', 'examples');
+    
+    if (!await fs.pathExists(examplesDir)) {
+        return [];
+    }
+    
+    const files = await fs.readdir(examplesDir);
+    const mdFiles = files
+        .filter(file => file.endsWith('.md'))
+        .map(file => ({
+            filename: file,
+            displayName: file.replace('.md', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            path: path.join(examplesDir, file)
+        }));
+    
+    return mdFiles;
+}
+
+// Helper function to get examples from a specific file
+async function getExamplesFromFile(filename) {
+    const examplesDir = path.join(process.cwd(), '..', 'assets', 'examples');
+    const filePath = path.join(examplesDir, filename);
+    
+    if (!await fs.pathExists(filePath)) {
+        throw new Error(`File not found: ${filename}`);
+    }
+    
+    const content = await fs.readFile(filePath, 'utf8');
+    
+    // Parse the markdown content and extract examples
+    const examples = [];
+    const lines = content.split('\n');
+    let currentExample = null;
+    let inPromptSection = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Check for example headers (###)
+        if (line.startsWith('### ')) {
+            if (currentExample) {
+                examples.push(currentExample);
+            }
+            currentExample = {
+                title: line.replace('### ', ''),
+                prompt: '',
+                category: 'general'
+            };
+            inPromptSection = false;
+        }
+        
+        // Check for prompt markers
+        if (line.startsWith('**Prompt:**')) {
+            inPromptSection = true;
+            const promptText = line.replace('**Prompt:**', '').trim();
+            if (currentExample && promptText) {
+                currentExample.prompt = promptText;
+            }
+            continue;
+        }
+        
+        // Collect prompt content
+        if (inPromptSection && currentExample && line.trim()) {
+            if (!line.startsWith('**') && !line.startsWith('##')) {
+                currentExample.prompt += (currentExample.prompt ? ' ' : '') + line.trim();
+            } else {
+                inPromptSection = false;
+            }
+        }
+    }
+    
+    // Add the last example
+    if (currentExample) {
+        examples.push(currentExample);
+    }
+    
+    return examples.filter(ex => ex.prompt.length > 0);
+}
 
 // Helper function to save API key to .env file
 async function saveApiKeyToEnv(keyName, apiKey) {
